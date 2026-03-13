@@ -78,10 +78,16 @@ def _apply_winner(winner, repo_root: Path) -> None:
     import shutil
     import subprocess
 
+    # Git is rooted at winner.path/src_dir (set up in workspace.provision),
+    # so all paths returned by git are relative to src_dir. We copy them
+    # explicitly under repo_root/src_dir — never to the repo root.
+    git_root = winner.path / winner.src_dir
+    dst_root = repo_root / winner.src_dir
+
     # Modified/deleted tracked files
     tracked = subprocess.run(
         ["git", "diff", "--name-only", "HEAD"],
-        cwd=winner.path,
+        cwd=git_root,
         capture_output=True,
         text=True,
         check=True,
@@ -90,7 +96,7 @@ def _apply_winner(winner, repo_root: Path) -> None:
     # New untracked files (recursively, respecting .gitignore)
     untracked = subprocess.run(
         ["git", "ls-files", "--others", "--exclude-standard"],
-        cwd=winner.path,
+        cwd=git_root,
         capture_output=True,
         text=True,
         check=True,
@@ -99,8 +105,8 @@ def _apply_winner(winner, repo_root: Path) -> None:
     for rel in set(tracked + untracked):
         if not rel:
             continue
-        src = winner.path / rel
-        dst = repo_root / rel
+        src = git_root / rel
+        dst = dst_root / rel
         if src.exists():
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dst)

@@ -1,13 +1,14 @@
 """Tests for orchestrator.run() task selection and stop-after-one behaviour."""
 
 import json
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from autobuild import orchestrator
-from autobuild.models import Task
+from autobuild.models import Task, Workspace
 
 
 # ── shared fixtures ───────────────────────────────────────────────────────────
@@ -140,3 +141,62 @@ def test_force_task_id_unknown_runs_nothing(tmp_path, fake_config):
     mock = _run(tmp_path, TASKS, force_task_id="999-missing", fake_config=fake_config)
 
     mock.assert_not_called()
+
+
+# ── _apply_winner copies to src_dir, never to repo root ───────────────────────
+
+_GIT_ID = ["-c", "user.email=test", "-c", "user.name=test"]
+
+
+def _make_workspace(tmp_path: Path, src_dir: str = "src") -> Workspace:
+    """Set up a minimal workspace with git rooted inside src_dir (as provision does)."""
+    workspace_path = tmp_path / "variation-a"
+    git_root = workspace_path / src_dir
+    git_root.mkdir(parents=True)
+    subprocess.run(["git", *_GIT_ID, "init"], cwd=git_root, check=True, capture_output=True)
+    subprocess.run(["git", *_GIT_ID, "commit", "--allow-empty", "-m", "seed"],
+                   cwd=git_root, check=True, capture_output=True)
+    return Workspace(task_id="001", variation="a", path=workspace_path, src_dir=src_dir)
+
+
+def test_apply_winner_copies_new_file_into_src_dir(tmp_path):
+    """New files written inside the workspace src_dir land under repo_root/src_dir."""
+    repo_root = tmp_path / "repo"
+    (repo_root / "src").mkdir(parents=True)
+
+    workspace = _make_workspace(tmp_path / "workspaces")
+    git_root = workspace.path / workspace.src_dir
+    (git_root / "monteCarlo" / "index.js").parent.mkdir(parents=True)
+    (git_root / "monteCarlo" / "index.js").write_text("export default {};")
+
+    orchestrator._apply_winner(workspace, repo_root)
+
+    expected = repo_root / "src" / "monteCarlo" / "index.js"
+    assert expected.exists(), f"Expected file at {expected}"
+    assert not (repo_root / "monteCarlo").exists(), \
+        "File must not be copied to repo root — must land inside src_dir"
+
+
+def test_apply_winner_modified_file_stays_in_src_dir(tmp_path):
+    """Modified tracked files are also written under repo_root/src_dir, not repo root."""
+    repo_root = tmp_path / "repo"
+    (repo_root / "src" / "utils").mkdir(parents=True)
+    (repo_root / "src" / "utils" / "helper.js").write_text("// original")
+
+    workspace = _make_workspace(tmp_path / "workspaces")
+    git_root = workspace.path / workspace.src_dir
+
+    # Seed an existing file and commit it so git tracks it, then modify it
+    (git_root / "utils").mkdir()
+    (git_root / "utils" / "helper.js").write_text("// original")
+    subprocess.run(["git", *_GIT_ID, "add", "."], cwd=git_root, check=True, capture_output=True)
+    subprocess.run(["git", *_GIT_ID, "commit", "-m", "add helper"],
+                   cwd=git_root, check=True, capture_output=True)
+    (git_root / "utils" / "helper.js").write_text("// modified by LLM")
+
+    orchestrator._apply_winner(workspace, repo_root)
+
+    expected = repo_root / "src" / "utils" / "helper.js"
+    assert expected.read_text() == "// modified by LLM"
+    assert not (repo_root / "utils").exists(), \
+        "Modified file must not appear at repo root — must stay inside src_dir"

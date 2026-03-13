@@ -39,7 +39,11 @@ def provision(
             dest = base / f"variation-{v}"
             dest.mkdir(parents=True, exist_ok=True)
             shutil.copytree(repo_root / src_dir, dest / src_dir, dirs_exist_ok=True)
-            _init_git(dest)
+            # Git is rooted inside src_dir so that all tracked paths are
+            # relative to src_dir. _apply_winner then copies them under
+            # repo_root/src_dir, making it structurally impossible for
+            # the winner's files to land outside src_dir in the real repo.
+            _init_git(dest / src_dir)
             workspaces.append(
                 Workspace(task_id=task.id, variation=v, path=dest, src_dir=src_dir),
             )

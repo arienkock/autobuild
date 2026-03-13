@@ -136,7 +136,7 @@ def test_parse_json_extracts_embedded_object():
 
 
 def test_parse_json_raises_on_missing_object():
-    with pytest.raises(ValueError, match="No JSON object"):
+    with pytest.raises(ValueError, match="Could not parse JSON object"):
         _parse_json_response("No JSON here.")
 
 
