@@ -10,13 +10,33 @@ _CRITERIA_DIR = Path(__file__).parent / "criteria"
 def rank(task: Task, workspaces: List[Workspace], llm) -> JudgeResult:
     criteria = _load_criteria()
     all_comparisons: List[Comparison] = []
+    pairs = list(combinations(workspaces, 2))
+    total = len(pairs) * len(criteria)
+    step = 0
+
+    print(
+        f"  Judging {len(workspaces)} variations across {len(criteria)} criteria"
+        f" ({total} comparisons)…",
+        flush=True,
+    )
 
     # pairwise tournament across all criteria
     scores: Dict[str, float] = {w.variation: 0.0 for w in workspaces}
-    for a, b in combinations(workspaces, 2):
+    for a, b in pairs:
         for criterion in criteria:
+            step += 1
+            print(
+                f"  [{step}/{total}] {criterion.name}: {a.variation} vs {b.variation}…",
+                flush=True,
+            )
             comparison = _compare(task, a, b, criterion, llm)
             all_comparisons.append(comparison)
+            winner_label = (
+                a.variation if comparison.winner == "A"
+                else b.variation if comparison.winner == "B"
+                else "tie"
+            )
+            print(f"    → {winner_label}: {comparison.reasoning[:120]}…", flush=True)
             if comparison.winner == "A":
                 scores[a.variation] += criterion.weight
             elif comparison.winner == "B":

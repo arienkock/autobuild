@@ -11,13 +11,11 @@ results_dir: ".autobuild/results"
 # Only this directory is copied into each workspace; the winner is merged back here.
 src_dir: "src"
 
-# Default minimum coverage threshold (per task) if not overridden in the task.
-default_min_coverage: 80
 
 # Quality gates run in the workspace after each implementation attempt.
 # Each entry is a shell command; all must exit 0 for the attempt to pass.
 # Adjust these when changing language, test framework, or analysis tools.
 quality_gates:
-  - "python -m pytest --tb=short -q"
+  - "npm run test"
 
 

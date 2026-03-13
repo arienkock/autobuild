@@ -2,6 +2,8 @@ id: "001"
 title: Create a monte carlo simulation for Net Present Value"
 description: |
   Create a monte carlo simulation for Net Present Value that can be used to estimate the probability of success of a project.
+  Stack: plain HTML and DOM usage. Logic should be in separate files and there should be some tests.
+  No documentation or comments. Just the code.
 context_files:
 variation_instructions:
   - "Optimise readability and maintainability of the code."

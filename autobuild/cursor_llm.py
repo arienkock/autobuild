@@ -200,18 +200,33 @@ def _build_compare_prompt(criterion_prompt: str, path_a: Path, path_b: Path) -> 
     """)
 
 
+_SOURCE_EXTENSIONS = {
+    ".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".scss",
+    ".java", ".go", ".rs", ".rb", ".c", ".cpp", ".h", ".hpp",
+}
+
+_IGNORE_DIRS = {"node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build"}
+
+
 def _collect_sources(root: Path, max_bytes: int = _MAX_FILE_BYTES) -> str:
-    """Return a concatenated markdown listing of Python files under *root*/src."""
+    """Return a concatenated markdown listing of source files under *root*/src."""
     src = root / "src"
     search_root = src if src.exists() else root
     parts: list[str] = []
-    for p in sorted(search_root.rglob("*.py")):
+    for p in sorted(search_root.rglob("*")):
+        if not p.is_file():
+            continue
+        if any(part in _IGNORE_DIRS for part in p.parts):
+            continue
+        if p.suffix.lower() not in _SOURCE_EXTENSIONS:
+            continue
         rel = p.relative_to(root)
         content = p.read_text(errors="replace")
         if len(content) > max_bytes:
             content = content[:max_bytes] + "\n... (truncated)"
-        parts.append(f"### {rel}\n```python\n{content}\n```")
-    return "\n\n".join(parts) if parts else "(no Python source files found)"
+        lang = p.suffix.lstrip(".")
+        parts.append(f"### {rel}\n```{lang}\n{content}\n```")
+    return "\n\n".join(parts) if parts else "(no source files found)"
 
 
 def _parse_json_response(text: str) -> dict[str, Any]:
