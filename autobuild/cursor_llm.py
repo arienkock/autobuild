@@ -56,7 +56,7 @@ class CursorLlm:
     ) -> None:
         """Ask the agent to implement *task* inside *workspace_path*."""
         prompt = build_implement_prompt(task, instruction, context)
-        label = workspace_path.name  # e.g. "variation-a"
+        label = workspace_path.parent.name  # e.g. "variation-a"
         _run_agent(
             prompt=prompt,
             bin=self._agent_bin,
