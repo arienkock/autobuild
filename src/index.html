@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monte Carlo Simulation</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <main>
+    <h1>Monte Carlo Simulation</h1>
+    <form id="sim-form">
+      <label>
+        Iterations
+        <input type="number" id="iterations" value="10000" min="100" step="100">
+      </label>
+      <button type="submit">Run</button>
+    </form>
+    <section id="results" class="results hidden">
+      <h2>Results</h2>
+      <dl id="stats"></dl>
+    </section>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
