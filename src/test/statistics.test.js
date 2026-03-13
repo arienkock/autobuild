@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { mean, median, stdDev, summary } from '../statistics.js';
+import { mean, median, stdDev, summary, timelineSummary } from '../statistics.js';
 
 test('mean of single value', () => {
   assert.strictEqual(mean([5]), 5);
@@ -38,4 +38,25 @@ test('summary contains mean median stdDev and sigma bounds', () => {
   assert.strictEqual(s.plus1Sigma, 3 + s.stdDev);
   assert.strictEqual(s.minus2Sigma, 3 - 2 * s.stdDev);
   assert.strictEqual(s.plus2Sigma, 3 + 2 * s.stdDev);
+});
+
+test('timelineSummary returns per-year stats', () => {
+  const timelines = [
+    [0, 10, 20],
+    [2, 12, 22],
+    [4, 14, 24],
+  ];
+  const s = timelineSummary(timelines);
+  assert.strictEqual(s.yearCount, 3);
+  assert.strictEqual(s.median[0], 2);
+  assert.strictEqual(s.median[1], 12);
+  assert.strictEqual(s.median[2], 22);
+  assert.strictEqual(s.minus1Sigma.length, 3);
+  assert.strictEqual(s.plus2Sigma.length, 3);
+});
+
+test('timelineSummary empty returns zeros', () => {
+  const s = timelineSummary([]);
+  assert.strictEqual(s.yearCount, 0);
+  assert.deepStrictEqual(s.median, []);
 });

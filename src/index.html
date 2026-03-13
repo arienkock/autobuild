@@ -11,14 +11,55 @@
     <h1>Monte Carlo Simulation</h1>
     <form id="sim-form">
       <label>
-        Iterations
-        <input type="number" id="iterations" value="10000" min="100" step="100">
+        Model
+        <select id="model-type">
+          <option value="sum">Sum</option>
+          <option value="npv">NPV</option>
+        </select>
       </label>
+      <div id="form-sum" class="model-form">
+        <label>
+          Iterations
+          <input type="number" id="iterations" value="10000" min="100" step="100">
+        </label>
+      </div>
+      <div id="form-npv" class="model-form hidden">
+        <label>
+          Iterations
+          <input type="number" id="iterations-npv" value="5000" min="100" step="100">
+        </label>
+        <label>
+          Initial investment
+          <input type="number" id="npv-initial" value="1000" step="100">
+        </label>
+        <label>
+          Years
+          <input type="number" id="npv-years" value="10" min="1" max="50">
+        </label>
+        <label>
+          Annual cashflow (mean)
+          <input type="number" id="npv-cf-mean" value="200" step="10">
+        </label>
+        <label>
+          Annual cashflow (std dev, optional)
+          <input type="number" id="npv-cf-std" value="40" min="0" step="5" placeholder="0 = constant">
+        </label>
+        <label>
+          Discount rate (e.g. 0.1 = 10%)
+          <input type="number" id="npv-rate" value="0.1" min="0" max="1" step="0.01">
+        </label>
+      </div>
       <button type="submit">Run</button>
     </form>
     <section id="results" class="results hidden">
       <h2>Results</h2>
-      <dl id="stats"></dl>
+      <div id="results-scalar" class="results-scalar">
+        <dl id="stats"></dl>
+      </div>
+      <div id="results-timeline" class="results-timeline hidden">
+        <p class="chart-caption">NPV over time (50th percentile, ±1σ and ±2σ)</p>
+        <div id="chart-container"></div>
+      </div>
     </section>
   </main>
   <script type="module" src="app.js"></script>

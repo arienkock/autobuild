@@ -1,0 +1,73 @@
+{
+  "agents": [
+    {
+      "variation": "a",
+      "success": true,
+      "reason": "Passed on attempt 1",
+      "cpu_time_seconds": 0.01
+    },
+    {
+      "variation": "b",
+      "success": true,
+      "reason": "Passed on attempt 1",
+      "cpu_time_seconds": 0.013
+    },
+    {
+      "variation": "c",
+      "success": true,
+      "reason": "Passed on attempt 1",
+      "cpu_time_seconds": 0.01
+    }
+  ],
+  "verdict": {
+    "winner": "b",
+    "reasoning": "Tournament scores:\n  b: 7.0 points\n  a: 3.0 points\n  c: 2.0 points",
+    "comparisons": [
+      {
+        "criterion": "simplicity",
+        "winner": "B",
+        "reasoning": "B has less incidental complexity. A introduces a dedicated simulation.js that exists only to branch on model.resultShape and call summary vs timelineSummary, plus RESULT_SHAPE in model.js used solely for that branch\u2014two layers that add indirection without simplifying the core flow. A also adds separate npvModel.js (with resolveValue, computeNPVTimeline, createNPVModel) and coneChart.js, so more modules and abstractions to follow. B keeps a single submit-handler branch (sum vs npv), no resultShape, and createNpvModel in model.js; the cone is inlined in app.js so there is no simulation wrapper or shape enum. B\u2019s app.js is longer and mixes chart logic with UI, but it avoids constructs that exist only to support other constructs. By lines and abstractions, B uses fewer files and no simulation/RESULT_SHAPE support layer, so the core logic is more direct and the incidental complexity is lower."
+      },
+      {
+        "criterion": "simplicity",
+        "winner": "B",
+        "reasoning": "B has less incidental complexity. A introduces three extra modules (npv.js, timelineStatistics.js, coneChart.js) and more total feature code; timelineStatistics exists only to reshape timeline data for coneChart, so it is an adapter that exists solely to support another construct. B keeps NPV logic in model.js and cone rendering in app.js, and adds only a generic timelineSummary in statistics.js, so there are fewer abstractions and no adapter layer. B\u2019s app.js is longer and mixes chart logic with UI, but the system has fewer modules, fewer lines in feature code, and no construct that exists only to feed another."
+      },
+      {
+        "criterion": "faithfulness",
+        "winner": "A",
+        "reasoning": "Implementation A (variation-b) is more faithful to the task. (1) Explicit requirements: Both implement NPV with cashflows, discount rate, and initial investment; both let the user choose the model; both produce a timeline and an area chart with 50th percentile and \u00b11\u03c3/\u00b12\u03c3. (2) Cone of uncertainty: The spec requires a 'cone of uncertainty which gets wider as time goes.' A achieves this by supporting uncertainty: the NPV form allows annual cashflow mean and optional std dev, and when std dev > 0 the model uses a normal distribution so each run gets different cashflows. The timeline summary then has real variance per year, so the cone widens over time. B uses only constants for all NPV inputs (comma-separated cashflows, single discount rate, initial investment), so every Monte Carlo run yields the same timeline and the 'cone' has zero width\u2014the core intent of uncertainty is missing. (3) Break-even: The spec says the timeline should allow 'the break-even point to be visually identified.' A's coneChart explicitly includes 0 in the y-scale and draws a dashed zero line, making break-even clear. B's chart scales y from data min/max only and does not draw a zero line, so break-even is less visible. (4) Structure: A cleanly separates simulation orchestration, NPV model, and cone chart rendering; B inlines the cone chart in app.js and has no dedicated simulation layer. A also supports variable initial investment and discount rate in the model API (resolveValue), enabling future uncertainty there. Thus A satisfies both the letter and the spirit of the spec (real uncertainty, widening cone, break-even visibility); B satisfies the chart structure but not the uncertainty or break-even visualization."
+      },
+      {
+        "criterion": "faithfulness",
+        "winner": "A",
+        "reasoning": "Implementation A better fulfills the task. (1) Explicit requirements: Both implement an NPV model with cashflows, discount rate, and initial investment; both output a timeline and let the user choose the model; both draw an area chart with 50th percentile and \u00b11\u03c3 and \u00b12\u03c3 in one chart. A additionally draws a dashed zero line when it falls in the chart range, so the break-even point can be visually identified as required. B does not show the zero line. (2) Intent and cone of uncertainty: The spec asks for a 'cone of uncertainty' that 'gets wider as time goes.' A achieves this by using random inputs for the NPV model (normalVar for each year's cashflow in getNPVModelFromForm), so Monte Carlo runs produce many different timelines and the percentile bands genuinely widen over time. B builds the NPV model from the form using only constants (constant() for every cashflow and the discount rate), so every run yields the same timeline, there is no variance, and the 'cone' has no width\u2014it is just a single path. So B satisfies the chart structure but not the purpose of the cone. (3) Missing/contradicted: B omits break-even visualization and contradicts the cone requirement by having no uncertainty in inputs. A meets all stated requirements and the underlying intent."
+      },
+      {
+        "criterion": "extensibility",
+        "winner": "tie",
+        "reasoning": "Both implementations share the same core extension mechanics: models are plain objects with a `run(random)` method consumed by a generic Monte Carlo runner, so new models can be added by defining new factory functions without touching the core simulation loop. Variable handling is also identical in both: a central `sample(variable, random)` function dispatches on `variable.type` and uses `distributions.js`, meaning adding new variable types or distributions requires the same kind of change (extending the if-chain and adding a distribution) in both A and B. The only structural difference is that A factors NPV math into a separate `npv.js` helper while B inlines it into the NPV model, but this does not materially change how often core logic must be edited nor how new models/variable types plug in. Consequently, with respect to the stated goals (no core simulation changes for new models, and future new variable types/distributions), neither design is clearly more resilient or extensible than the other."
+      },
+      {
+        "criterion": "extensibility",
+        "winner": "A",
+        "reasoning": "Implementation A defines a clear, generic model contract (`{ resultShape, run(random) }`) and a central `runSimulation` function that branches only on `model.resultShape` to choose between scalar and timeline aggregation. Adding a new model in A just means creating a new factory that returns an object with `run` and an appropriate `resultShape`; neither `simulation.js` nor `statistics.js` need to change, and the app layer only needs to be extended to construct and select the new model. In contrast, Implementation B wires simulation behavior per-model in `app.js` (`runSumSimulation`, `runNpvSimulation`) and manually chooses `summary` vs `timelineSummary`, so each new model tends to introduce new branching and duplicated simulation/aggregation logic in the UI layer, making the core behavior more scattered and harder to extend without edits. Variable and distribution handling are effectively the same between A and B, so the differentiator is how models plug into the simulation pipeline, and A\u2019s design is more resilient to new models and edge cases because it centralizes orchestration behind a small, stable interface."
+      },
+      {
+        "criterion": "faithfulness",
+        "winner": "B",
+        "reasoning": "Both implementations meet the explicit requirements: they compute NPV from initial investment, cashflows, and discount rate; return a per-year NPV timeline for individual runs; let the user choose between models; and visualize the NPV model as a cone-of-uncertainty area chart showing the median and \u00b11\u03c3/\u00b12\u03c3 bands together. Implementation B, however, more clearly aligns with the underlying intent: it treats models uniformly via an explicit resultShape contract, has an NPV-specific model API that directly mirrors the spec (initialInvestment, cashflows, discountRate, years), aggregates timelines via a dedicated timelineSummary, and feeds that into a cone chart renderer that is explicitly documented in terms of per-year break-even visualization. These design choices make the NPV model feel like a first-class, timeline-focused model for visual break-even analysis rather than just an added special case, so B is more faithful overall."
+      },
+      {
+        "criterion": "extensibility",
+        "winner": "B",
+        "reasoning": "B is easier to extend for new models. The core simulation (simulation.js) dispatches only on model.resultShape ('scalar' | 'timeline') and never on concrete model type, so adding a new model requires zero changes to simulation.js or monteCarlo.js\u2014just a new module that implements { resultShape, run }. In A, the logic that chooses how to summarize (scalar vs timeline) lives in app.js and branches on model type (sum vs npv), so every new model forces edits to that orchestration. For new variable types and distributions, both implementations are equivalent (if/else in variable.js, new functions in distributions.js); neither has a registry. B is more resilient: any future model that returns scalar or timeline works without touching the simulation core; if a new result shape were added, only simulation.js would need one new branch, whereas in A summarization is coupled to model-type branches in the app."
+      },
+      {
+        "criterion": "simplicity",
+        "winner": "A",
+        "reasoning": "A has less incidental complexity. (1) Lines and abstractions: A uses ~336 lines of feature code across model.js, npv.js, timelineStatistics.js, app.js, statistics, monteCarlo, coneChart; B uses ~377 lines and adds simulation.js, RESULT_SHAPE, resolveValue, and extends statistics with timelineSummary. (2) Cognitive load: In A, the flow is direct\u2014run(iterations, model) then either summary(results) or timelineSummaries(timelines) at the call site; the app branches on model type once. In B, resultShape is threaded through models, runSimulation dispatches on it, and the app dispatches again on result.resultShape, so you must follow the discriminator through multiple layers. (3) Supporting-only constructs: B introduces RESULT_SHAPE only so runSimulation and the app can branch; simulation.js exists solely to unify run + summarize and dispatch by resultShape; resolveValue exists only to support spec values that can be number or variable (A's NPV model takes variables and samples inside run). A has no such meta-abstractions\u2014timelineSummaries is a single pure function over timelines, and NPV logic lives in plain npv.js (discountFactor, npvTimeline) with no spec/resolve layer. Therefore A wins."
+      }
+    ]
+  }
+}

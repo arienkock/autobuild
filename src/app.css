@@ -57,3 +57,28 @@ button {
 #stats dd {
   margin: 0;
 }
+
+.model-form.hidden {
+  display: none;
+}
+
+.results-timeline.hidden {
+  display: none;
+}
+
+.results-timeline .chart-caption {
+  margin: 0 0 0.5rem 0;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+#chart-container {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.cone-chart {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
