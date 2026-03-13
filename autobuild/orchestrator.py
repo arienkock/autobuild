@@ -76,12 +76,36 @@ def _run_task(
 
 def _apply_winner(winner, repo_root: Path) -> None:
     import shutil
+    import subprocess
 
-    shutil.copytree(
-        winner.path / winner.src_dir,
-        repo_root / winner.src_dir,
-        dirs_exist_ok=True,
-    )
+    # Modified/deleted tracked files
+    tracked = subprocess.run(
+        ["git", "diff", "--name-only", "HEAD"],
+        cwd=winner.path,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+
+    # New untracked files (recursively, respecting .gitignore)
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        cwd=winner.path,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+
+    for rel in set(tracked + untracked):
+        if not rel:
+            continue
+        src = winner.path / rel
+        dst = repo_root / rel
+        if src.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+        else:
+            dst.unlink(missing_ok=True)
 
 
 def _archive(task: Task, results: Iterable, verdict, results_dir: Path) -> None:
