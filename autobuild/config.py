@@ -5,6 +5,7 @@ import yaml
 from .models import Config
 
 _DEFAULT_QUALITY_GATES = ["python -m pytest --tb=short -q"]
+_DEFAULT_SRC_DIR = "src"
 
 
 def load_config(repo_root: Path) -> Config:
@@ -12,4 +13,5 @@ def load_config(repo_root: Path) -> Config:
     data: dict = yaml.safe_load(path.read_text()) if path.exists() else {}
     return Config(
         quality_gates=data.get("quality_gates", _DEFAULT_QUALITY_GATES),
+        src_dir=data.get("src_dir", _DEFAULT_SRC_DIR),
     )

@@ -19,11 +19,13 @@ class Workspace:
     task_id: str
     variation: str  # "a", "b", "c"
     path: Path
+    src_dir: str
 
 
 @dataclass(frozen=True)
 class Config:
     quality_gates: list[str]
+    src_dir: str
 
 
 @dataclass(frozen=True)

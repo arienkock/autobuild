@@ -13,7 +13,7 @@ def run(repo_root: Path, backlog_dir: Path, results_dir: Path, llm) -> None:
     config = load_config(repo_root)
     for task in load_backlog(backlog_dir):
         print(f"\n── Task {task.id}: {task.title}")
-        _run_task(task, repo_root, results_dir, llm, config.quality_gates)
+        _run_task(task, repo_root, results_dir, llm, config.quality_gates, config.src_dir)
 
 
 def _run_task(
@@ -22,8 +22,9 @@ def _run_task(
     results_dir: Path,
     llm,
     quality_gates: list[str],
+    src_dir: str,
 ) -> None:
-    with workspace.provision(task, repo_root) as workspaces:
+    with workspace.provision(task, repo_root, src_dir) as workspaces:
         # implement all 3 variations in parallel
         with ProcessPoolExecutor(max_workers=3) as pool:
             futures = [
@@ -48,8 +49,11 @@ def _run_task(
 def _apply_winner(winner, repo_root: Path) -> None:
     import shutil
 
-    # copy winner's src/ back over repo's src/
-    shutil.copytree(winner.path / "src", repo_root / "src", dirs_exist_ok=True)
+    shutil.copytree(
+        winner.path / winner.src_dir,
+        repo_root / winner.src_dir,
+        dirs_exist_ok=True,
+    )
 
 
 def _archive(task: Task, results: Iterable, verdict, results_dir: Path) -> None:
