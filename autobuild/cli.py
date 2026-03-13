@@ -35,6 +35,11 @@ def main(argv: list[str] | None = None) -> None:
         metavar="TASK_ID",
         help="Build a specific task by ID, ignoring any existing results.",
     )
+    parser.add_argument(
+        "--keep-workspaces",
+        action="store_true",
+        help="Keep temporary workspaces after the run for post-run inspection.",
+    )
 
     args = parser.parse_args(argv)
     llm = create_default_llm()
@@ -46,6 +51,7 @@ def main(argv: list[str] | None = None) -> None:
         llm=llm,
         run_all=args.all,
         force_task_id=args.task,
+        keep_workspaces=args.keep_workspaces,
     )
 
 

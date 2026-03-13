@@ -18,6 +18,7 @@ def provision(
     repo_root: Path,
     src_dir: str,
     tmp_root: Path = Path("/tmp/autobuild"),
+    keep: bool = False,
 ) -> List[Workspace]:
     """Yield three isolated workspaces for a task and clean them up on exit.
 
@@ -25,6 +26,9 @@ def provision(
     same relative path inside a fresh git repository.  The initial commit
     records the baseline so that ``git diff HEAD`` inside the workspace shows
     exactly what the LLM changed.
+
+    Pass ``keep=True`` to skip cleanup so the workspaces can be inspected
+    after the run completes.
     """
     base = tmp_root / task.id
     base.mkdir(parents=True, exist_ok=True)
@@ -40,7 +44,10 @@ def provision(
             )
         yield workspaces
     finally:
-        shutil.rmtree(base, ignore_errors=True)
+        if keep:
+            print(f"  Workspaces kept at: {base}")
+        else:
+            shutil.rmtree(base, ignore_errors=True)
 
 
 def _init_git(path: Path) -> None:

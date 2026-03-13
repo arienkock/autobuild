@@ -15,6 +15,7 @@ def run(
     llm,
     run_all: bool = False,
     force_task_id: str | None = None,
+    keep_workspaces: bool = False,
 ) -> None:
     """Run the autobuild loop over tasks in the backlog.
 
@@ -34,7 +35,7 @@ def run(
                 continue
 
         print(f"\n── Task {task.id}: {task.title}")
-        _run_task(task, repo_root, results_dir, llm, config.quality_gates, config.src_dir)
+        _run_task(task, repo_root, results_dir, llm, config.quality_gates, config.src_dir, keep_workspaces)
 
         if not run_all:
             break
@@ -47,8 +48,9 @@ def _run_task(
     llm,
     quality_gates: list[str],
     src_dir: str,
+    keep_workspaces: bool = False,
 ) -> None:
-    with workspace.provision(task, repo_root, src_dir) as workspaces:
+    with workspace.provision(task, repo_root, src_dir, keep=keep_workspaces) as workspaces:
         for ws in workspaces:
             print(f"  [{ws.variation}] workspace: {ws.path}")
         # implement all 3 variations in parallel
