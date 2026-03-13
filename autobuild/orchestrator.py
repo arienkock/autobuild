@@ -25,6 +25,8 @@ def _run_task(
     src_dir: str,
 ) -> None:
     with workspace.provision(task, repo_root, src_dir) as workspaces:
+        for ws in workspaces:
+            print(f"  [{ws.variation}] workspace: {ws.path}")
         # implement all 3 variations in parallel
         with ProcessPoolExecutor(max_workers=3) as pool:
             futures = [

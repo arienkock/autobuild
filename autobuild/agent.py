@@ -22,20 +22,26 @@ def run(
     llm: LlmClient,
     quality_gates: list[str],
 ) -> AgentResult:
+    tag = f"[{workspace.variation}]"
     instruction = _variation_instruction(task, workspace.variation)
     context = _read_context(task, workspace)
 
     for attempt in range(MAX_RETRIES):
+        print(f"  {tag} attempt {attempt + 1}/{MAX_RETRIES}: implementing…", flush=True)
         llm.implement(task, instruction, context, workspace.path)
+        print(f"  {tag} running quality gates…", flush=True)
         gate_result = _run_gates(workspace, quality_gates)
         if gate_result.passed:
+            print(f"  {tag} gates passed ✓", flush=True)
             return AgentResult(
                 success=True,
                 workspace=workspace,
                 reason=f"Passed on attempt {attempt + 1}",
             )
+        print(f"  {tag} gates failed — retrying", flush=True)
         context = _append_failure(context, gate_result.output)
 
+    print(f"  {tag} all {MAX_RETRIES} attempts exhausted ✗", flush=True)
     return AgentResult(
         success=False,
         workspace=workspace,

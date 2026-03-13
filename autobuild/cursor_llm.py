@@ -12,6 +12,8 @@ import re
 import shutil
 import subprocess
 import textwrap
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +59,7 @@ class CursorLlm:
     ) -> None:
         """Ask the agent to implement *task* inside *workspace_path*."""
         prompt = _build_implement_prompt(task, instruction, context)
+        label = workspace_path.name  # e.g. "variation-a"
         _run_agent(
             prompt=prompt,
             bin=self._agent_bin,
@@ -65,6 +68,7 @@ class CursorLlm:
             model=self._model,
             extra_args=self._extra_args,
             force=True,
+            heartbeat_label=label,
         )
 
     def compare(self, prompt: str, path_a: Path, path_b: Path) -> dict[str, Any]:
@@ -98,6 +102,9 @@ def _find_agent_bin() -> str:
     )
 
 
+_HEARTBEAT_INTERVAL = 5  # seconds between heartbeat prints
+
+
 def _run_agent(
     prompt: str,
     bin: str,
@@ -106,6 +113,7 @@ def _run_agent(
     model: str | None = None,
     extra_args: list[str] | None = None,
     force: bool = True,
+    heartbeat_label: str | None = None,
 ) -> str:
     cmd = [bin, "--print", "--trust"]
     if force:
@@ -119,6 +127,9 @@ def _run_agent(
     cmd.extend(extra_args or [])
     cmd.append(prompt)
 
+    if heartbeat_label is not None:
+        return _run_agent_with_heartbeat(cmd, heartbeat_label)
+
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(
@@ -126,6 +137,32 @@ def _run_agent(
             f"{result.stderr or result.stdout}"
         )
     return result.stdout
+
+
+def _run_agent_with_heartbeat(cmd: list[str], label: str) -> str:
+    """Run *cmd*, printing a heartbeat line every few seconds while it runs."""
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    start = time.monotonic()
+    stop_event = threading.Event()
+
+    def _heartbeat() -> None:
+        while not stop_event.wait(timeout=_HEARTBEAT_INTERVAL):
+            elapsed = int(time.monotonic() - start)
+            print(f"  [{label}] ⟳ still running ({elapsed}s)…", flush=True)
+
+    hb_thread = threading.Thread(target=_heartbeat, daemon=True)
+    hb_thread.start()
+    try:
+        stdout, _ = proc.communicate()
+    finally:
+        stop_event.set()
+        hb_thread.join()
+
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"cursor-agent failed (exit {proc.returncode}):\n{stdout}"
+        )
+    return stdout
 
 
 def _build_implement_prompt(task: Task, instruction: str, context: str) -> str:
