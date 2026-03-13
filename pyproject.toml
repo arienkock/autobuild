@@ -1,0 +1,29 @@
+[project]
+name = "autobuild"
+version = "0.1.0"
+description = "Agentic development framework that runs multiple implementation strategies and selects the best via LLM-judged tournaments."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+  { name = "Autobuild", email = "dev@example.com" },
+]
+dependencies = [
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+]
+
+[project.scripts]
+autobuild = "autobuild.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["autobuild*"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+

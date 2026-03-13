@@ -1,0 +1,19 @@
+id: "001"
+title: "Add a search endpoint"
+description: |
+  Implement a basic full-text search endpoint over the existing items API.
+  The endpoint should accept a query string and return matching items ordered
+  by relevance.
+context_files:
+  - "src/app.py"
+  - "src/search.py"
+variation_instructions:
+  - "Optimise for minimal code changes to existing modules. Prefer small, targeted edits."
+  - "Optimise for a clean, layered architecture, even if it means more new files."
+  - "Optimise for future evolution: assume the search logic will grow significantly."
+extensibility_scenario: |
+  Six months from now, the product team wants to support filtering by multiple
+  fields (category, owner, creation date) and pluggable ranking strategies
+  without rewriting the core search API.
+min_coverage: 85
+

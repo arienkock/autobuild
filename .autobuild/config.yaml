@@ -1,0 +1,13 @@
+# Autobuild configuration
+#
+# This file documents where Autobuild expects to find its inputs and where it
+# writes results. The orchestrator can also be driven directly via its Python
+# API if you need more control.
+
+backlog_dir: "backlog"
+results_dir: ".autobuild/results"
+
+# Default minimum coverage threshold (per task) if not overridden in the task.
+default_min_coverage: 80
+
+
