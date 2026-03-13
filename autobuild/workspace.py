@@ -31,6 +31,7 @@ def provision(
     after the run completes.
     """
     base = tmp_root / task.id
+    shutil.rmtree(base, ignore_errors=True)
     base.mkdir(parents=True, exist_ok=True)
     workspaces: List[Workspace] = []
     try:
