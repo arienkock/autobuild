@@ -64,6 +64,8 @@ def _load_criteria() -> List["_Criterion"]:
     for path in sorted(_CRITERIA_DIR.glob("*.md")):
         text = path.read_text()
         weight = _parse_weight(text)
+        if weight == 0:
+            continue
         prompt = _parse_prompt(text)
         criteria.append(_Criterion(name=path.stem, prompt=prompt, weight=weight))
     return criteria
@@ -86,6 +88,8 @@ def _compare(task: Task, a: Workspace, b: Workspace, criterion: _Criterion, llm)
     prompt = criterion.prompt
     if "{{extensibility_scenario}}" in prompt:
         prompt = prompt.replace("{{extensibility_scenario}}", task.extensibility_scenario)
+    if "{{task_description}}" in prompt:
+        prompt = prompt.replace("{{task_description}}", task.description)
     result = llm.compare(prompt, a.path, b.path)
     return Comparison(
         criterion=criterion.name,
