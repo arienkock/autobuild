@@ -1,20 +1,21 @@
 from pathlib import Path
 from typing import List, Optional
 
-import yaml
+import frontmatter
 
 from .models import Task
 
 _REQUIRED = {
     "id",
     "title",
-    "description",
     "extensibility_scenario",
 }
 
 
 def load(path: Path, default_variation_instructions: Optional[List[str]] = None) -> Task:
-    raw = yaml.safe_load(path.read_text())
+    post = frontmatter.load(str(path))
+    raw = dict(post.metadata)
+    raw["description"] = post.content.strip()
     missing = _REQUIRED - raw.keys()
     if missing:
         raise ValueError(f"Task {path} missing fields: {missing}")
@@ -25,12 +26,11 @@ def load(path: Path, default_variation_instructions: Optional[List[str]] = None)
             "(set them on the task or via default_variation_instructions in config.yaml)",
         )
     raw["variation_instructions"] = instructions
-    # Only pass fields that exist on Task
     data = {k: raw[k] for k in Task.__dataclass_fields__ if k in raw}
     return Task(**data)
 
 
 def load_backlog(backlog_dir: Path, default_variation_instructions: Optional[List[str]] = None) -> List[Task]:
-    files = sorted(backlog_dir.glob("*.yaml"))
+    files = sorted(backlog_dir.glob("*.md"))
     return [load(f, default_variation_instructions) for f in files]
 
