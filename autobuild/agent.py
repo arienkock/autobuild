@@ -16,13 +16,18 @@ class LlmClient(Protocol):
     ) -> None: ...
 
 
-def run(task: Task, workspace: Workspace, llm: LlmClient) -> AgentResult:
+def run(
+    task: Task,
+    workspace: Workspace,
+    llm: LlmClient,
+    quality_gates: list[str],
+) -> AgentResult:
     instruction = _variation_instruction(task, workspace.variation)
     context = _read_context(task, workspace)
 
     for attempt in range(MAX_RETRIES):
         llm.implement(task, instruction, context, workspace.path)
-        gate_result = _run_gates(workspace)
+        gate_result = _run_gates(workspace, quality_gates)
         if gate_result.passed:
             return AgentResult(
                 success=True,
@@ -62,15 +67,16 @@ class _GateResult:
         self.output = output
 
 
-def _run_gates(workspace: Workspace) -> _GateResult:
-    result = subprocess.run(
-        ["python", "-m", "pytest", "--tb=short", "-q"],
-        cwd=workspace.path,
-        capture_output=True,
-        text=True,
-    )
-    return _GateResult(
-        passed=result.returncode == 0,
-        output=result.stdout + result.stderr,
-    )
+def _run_gates(workspace: Workspace, quality_gates: list[str]) -> _GateResult:
+    for cmd in quality_gates:
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            cwd=workspace.path,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return _GateResult(passed=False, output=result.stdout + result.stderr)
+    return _GateResult(passed=True, output="")
 

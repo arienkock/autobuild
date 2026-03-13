@@ -3,22 +3,33 @@ from pathlib import Path
 from typing import Iterable
 
 from . import agent, judge, workspace
+from .config import load_config
 from .models import Task
 from .task_loader import load_backlog
 
 
 def run(repo_root: Path, backlog_dir: Path, results_dir: Path, llm) -> None:
     """Run the autobuild loop over all tasks in the backlog."""
+    config = load_config(repo_root)
     for task in load_backlog(backlog_dir):
         print(f"\n── Task {task.id}: {task.title}")
-        _run_task(task, repo_root, results_dir, llm)
+        _run_task(task, repo_root, results_dir, llm, config.quality_gates)
 
 
-def _run_task(task: Task, repo_root: Path, results_dir: Path, llm) -> None:
+def _run_task(
+    task: Task,
+    repo_root: Path,
+    results_dir: Path,
+    llm,
+    quality_gates: list[str],
+) -> None:
     with workspace.provision(task, repo_root) as workspaces:
         # implement all 3 variations in parallel
         with ProcessPoolExecutor(max_workers=3) as pool:
-            futures = [pool.submit(agent.run, task, ws, llm) for ws in workspaces]
+            futures = [
+                pool.submit(agent.run, task, ws, llm, quality_gates)
+                for ws in workspaces
+            ]
             results = [f.result() for f in futures]
 
         survivors = [r.workspace for r in results if r.success]

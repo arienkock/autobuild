@@ -22,6 +22,11 @@ class Workspace:
 
 
 @dataclass(frozen=True)
+class Config:
+    quality_gates: list[str]
+
+
+@dataclass(frozen=True)
 class AgentResult:
     success: bool
     workspace: Workspace
