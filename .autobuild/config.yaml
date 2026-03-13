@@ -15,10 +15,10 @@ src_dir: "src"
 # Default variation instructions used when a task file omits variation_instructions.
 # Exactly 3 entries are required (one per variation). Task-level instructions take
 # precedence over these defaults.
-# default_variation_instructions:
-#   - "You are a ATDD expert. Write the tests first at a functional level, then the code."
-#   - "You are a world-class software engineer."
-#   - "You are an expert developer with a PhD in statistics and machine learning."
+default_variation_instructions:
+  - "Execute the task from the inside out. Start with the low level components and build up to the higher level components. You should prefer to write idealised 'internal' code before it's needed and adjust later."
+  - "Execute the task from the outside in. Write the top level functional interfaces layersfirst, then only when that's done should you implement the 'internal' code."
+  - "Write failing tests first at a functional level to sharpen your thinking, then the code. Perform a typical RED -> GREEN -> REFACTOR cycle for each test. Do NOT write multiple failing tests at once!"
 
 
 # Quality gates run in the workspace after each implementation attempt.

@@ -12,5 +12,4 @@ variation_instructions:
   - "You are an expert developer, but you also have a PhD in statistics and machine learning."
 extensibility_scenario: |
   Adding new models in the future should not require ANY changes to the core simulation logic. New variable types and distributions will be added in the future.
-min_coverage: 85
 
