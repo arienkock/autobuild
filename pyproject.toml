@@ -23,6 +23,11 @@ autobuild = "autobuild.cli:main"
 [tool.setuptools.packages.find]
 include = ["autobuild*"]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that call the real cursor-agent CLI (require a valid Cursor session)",
+]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"

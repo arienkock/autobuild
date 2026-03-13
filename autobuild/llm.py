@@ -1,7 +1,8 @@
-"""LLM interface definitions and a simple stub implementation.
+"""LLM interface definitions and default factory.
 
-This module deliberately leaves the actual LLM wiring to the user of the
-library; the rest of the system depends only on the interface here.
+The ``Llm`` protocol defines the two methods the rest of the system calls.
+``create_default_llm`` returns a ``CursorLlm`` if ``cursor-agent`` is
+available, falling back to ``NotConfiguredLlm`` with a helpful error.
 """
 
 from pathlib import Path
@@ -17,7 +18,7 @@ class Llm(Protocol):
 
 
 class NotConfiguredLlm:
-    """Placeholder LLM that fails with a helpful error message."""
+    """Placeholder LLM that raises a descriptive error on every call."""
 
     def __init__(self, reason: str | None = None) -> None:
         self._reason = reason or "No LLM has been configured for Autobuild."
@@ -30,11 +31,10 @@ class NotConfiguredLlm:
 
 
 def create_default_llm() -> Llm:
-    """Factory hook for wiring in a real LLM client.
-
-    Replace this function in your own project or provide your own LLM instance
-    to `orchestrator.run`.
-    """
-
-    return NotConfiguredLlm()
+    """Return a ``CursorLlm`` if ``cursor-agent`` is available, else a stub."""
+    try:
+        from .cursor_llm import CursorLlm  # noqa: PLC0415
+        return CursorLlm()
+    except FileNotFoundError as exc:
+        return NotConfiguredLlm(str(exc))
 
