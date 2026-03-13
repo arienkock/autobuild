@@ -48,7 +48,7 @@ def _init_git(path: Path) -> None:
     subprocess.run(["git", *_GIT_ENV_ARGS, "init"], cwd=path, check=True, capture_output=True)
     subprocess.run(["git", *_GIT_ENV_ARGS, "add", "."], cwd=path, check=True, capture_output=True)
     subprocess.run(
-        ["git", *_GIT_ENV_ARGS, "commit", "-m", "seed"],
+        ["git", *_GIT_ENV_ARGS, "commit", "--allow-empty", "-m", "seed"],
         cwd=path,
         check=True,
         capture_output=True,
