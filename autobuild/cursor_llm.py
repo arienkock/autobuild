@@ -68,13 +68,16 @@ class CursorLlm:
             heartbeat_label=label,
         )
 
-    def compare(self, prompt: str, path_a: Path, path_b: Path) -> dict[str, Any]:
+    def compare(
+        self, prompt: str, path_a: Path, path_b: Path, workspace: Path | None = None
+    ) -> dict[str, Any]:
         """Ask the agent to compare two implementations and return a winner."""
         full_prompt = build_compare_prompt(prompt, path_a, path_b, include_content=False)
         output = _run_agent(
             prompt=full_prompt,
             bin=self._agent_bin,
             api_key=self._api_key,
+            workspace=workspace,
             model=self._model,
             extra_args=["--mode", "ask"] + self._extra_args,
             force=False,
