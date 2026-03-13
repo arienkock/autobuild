@@ -1,4 +1,5 @@
 import subprocess
+import time
 from typing import Protocol
 
 from .models import AgentResult, Task, Workspace
@@ -25,6 +26,7 @@ def run(
     tag = f"[{workspace.variation}]"
     instruction = _variation_instruction(task, workspace.variation)
     context = _read_context(task, workspace)
+    cpu_start = time.process_time()
 
     for attempt in range(MAX_RETRIES):
         print(f"  {tag} attempt {attempt + 1}/{MAX_RETRIES}: implementing…", flush=True)
@@ -37,6 +39,7 @@ def run(
                 success=True,
                 workspace=workspace,
                 reason=f"Passed on attempt {attempt + 1}",
+                cpu_time_seconds=time.process_time() - cpu_start,
             )
         print(f"  {tag} gates failed — retrying", flush=True)
         context = _append_failure(context, gate_result.output)
@@ -46,6 +49,7 @@ def run(
         success=False,
         workspace=workspace,
         reason=f"Gates failed after {MAX_RETRIES} attempts",
+        cpu_time_seconds=time.process_time() - cpu_start,
     )
 
 

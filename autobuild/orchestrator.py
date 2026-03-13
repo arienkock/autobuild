@@ -93,6 +93,7 @@ def _archive(task: Task, results: Iterable, verdict, results_dir: Path) -> None:
                 "variation": r.workspace.variation,
                 "success": r.success,
                 "reason": r.reason,
+                "cpu_time_seconds": round(r.cpu_time_seconds, 3),
             }
             for r in results
         ],

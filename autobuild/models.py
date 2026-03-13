@@ -33,6 +33,7 @@ class AgentResult:
     success: bool
     workspace: Workspace
     reason: str  # failure cause or completion summary
+    cpu_time_seconds: float = 0.0
 
 
 @dataclass(frozen=True)
