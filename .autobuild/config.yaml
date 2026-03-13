@@ -12,6 +12,15 @@ results_dir: ".autobuild/results"
 src_dir: "src"
 
 
+# Default variation instructions used when a task file omits variation_instructions.
+# Exactly 3 entries are required (one per variation). Task-level instructions take
+# precedence over these defaults.
+# default_variation_instructions:
+#   - "You are a ATDD expert. Write the tests first at a functional level, then the code."
+#   - "You are a world-class software engineer."
+#   - "You are an expert developer with a PhD in statistics and machine learning."
+
+
 # Quality gates run in the workspace after each implementation attempt.
 # Each entry is a shell command; all must exit 0 for the attempt to pass.
 # Adjust these when changing language, test framework, or analysis tools.

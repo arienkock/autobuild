@@ -26,6 +26,11 @@ class Workspace:
 class Config:
     quality_gates: list[str]
     src_dir: str
+    default_variation_instructions: list[str] = None
+
+    def __post_init__(self):
+        if self.default_variation_instructions is None:
+            object.__setattr__(self, "default_variation_instructions", [])
 
 
 @dataclass(frozen=True)

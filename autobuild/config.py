@@ -14,4 +14,5 @@ def load_config(repo_root: Path) -> Config:
     return Config(
         quality_gates=data.get("quality_gates", _DEFAULT_QUALITY_GATES),
         src_dir=data.get("src_dir", _DEFAULT_SRC_DIR),
+        default_variation_instructions=data.get("default_variation_instructions", []),
     )

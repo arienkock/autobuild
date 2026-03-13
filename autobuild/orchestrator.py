@@ -24,7 +24,7 @@ def run(
     ``force_task_id`` to build a specific task regardless of prior results.
     """
     config = load_config(repo_root)
-    for task in load_backlog(backlog_dir):
+    for task in load_backlog(backlog_dir, config.default_variation_instructions):
         if force_task_id is not None:
             if task.id != force_task_id:
                 continue

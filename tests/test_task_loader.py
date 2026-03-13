@@ -1,0 +1,105 @@
+"""Tests for task_loader.load() and load_backlog() default_variation_instructions."""
+
+import pytest
+import yaml
+
+from autobuild.task_loader import load, load_backlog
+
+
+_THREE = ["instruction a", "instruction b", "instruction c"]
+_OTHER_THREE = ["x", "y", "z"]
+
+_BASE = {
+    "id": "001",
+    "title": "T",
+    "description": "D",
+    "context_files": [],
+    "extensibility_scenario": "E",
+}
+
+
+def _write_task(path, data: dict):
+    path.write_text(yaml.dump(data))
+
+
+# ── task has its own variation_instructions ───────────────────────────────────
+
+
+def test_task_instructions_used_when_present(tmp_path):
+    f = tmp_path / "task.yaml"
+    _write_task(f, {**_BASE, "variation_instructions": _THREE})
+    task = load(f)
+    assert task.variation_instructions == _THREE
+
+
+def test_task_instructions_take_precedence_over_defaults(tmp_path):
+    f = tmp_path / "task.yaml"
+    _write_task(f, {**_BASE, "variation_instructions": _THREE})
+    task = load(f, default_variation_instructions=_OTHER_THREE)
+    assert task.variation_instructions == _THREE
+
+
+# ── task omits variation_instructions, defaults used ─────────────────────────
+
+
+def test_defaults_used_when_task_omits_instructions(tmp_path):
+    f = tmp_path / "task.yaml"
+    _write_task(f, _BASE)
+    task = load(f, default_variation_instructions=_THREE)
+    assert task.variation_instructions == _THREE
+
+
+def test_defaults_used_when_task_has_null_instructions(tmp_path):
+    f = tmp_path / "task.yaml"
+    _write_task(f, {**_BASE, "variation_instructions": None})
+    task = load(f, default_variation_instructions=_THREE)
+    assert task.variation_instructions == _THREE
+
+
+def test_defaults_used_when_task_has_empty_list(tmp_path):
+    f = tmp_path / "task.yaml"
+    _write_task(f, {**_BASE, "variation_instructions": []})
+    task = load(f, default_variation_instructions=_THREE)
+    assert task.variation_instructions == _THREE
+
+
+# ── validation errors ─────────────────────────────────────────────────────────
+
+
+def test_error_when_no_instructions_anywhere(tmp_path):
+    f = tmp_path / "task.yaml"
+    _write_task(f, _BASE)
+    with pytest.raises(ValueError, match="variation_instructions"):
+        load(f)
+
+
+def test_error_when_wrong_count_in_task(tmp_path):
+    f = tmp_path / "task.yaml"
+    _write_task(f, {**_BASE, "variation_instructions": ["only one"]})
+    with pytest.raises(ValueError, match="exactly 3"):
+        load(f)
+
+
+def test_error_hints_at_config_when_no_instructions(tmp_path):
+    f = tmp_path / "task.yaml"
+    _write_task(f, _BASE)
+    with pytest.raises(ValueError, match="config.yaml"):
+        load(f)
+
+
+# ── load_backlog passes defaults to every task ────────────────────────────────
+
+
+def test_load_backlog_applies_defaults_to_all_tasks(tmp_path):
+    for i in range(1, 4):
+        _write_task(tmp_path / f"00{i}.yaml", {**_BASE, "id": f"00{i}"})
+    tasks = load_backlog(tmp_path, default_variation_instructions=_THREE)
+    assert all(t.variation_instructions == _THREE for t in tasks)
+
+
+def test_load_backlog_task_overrides_default(tmp_path):
+    _write_task(tmp_path / "001.yaml", {**_BASE, "id": "001", "variation_instructions": _THREE})
+    _write_task(tmp_path / "002.yaml", {**_BASE, "id": "002"})
+    tasks = load_backlog(tmp_path, default_variation_instructions=_OTHER_THREE)
+    assert tasks[0].variation_instructions == _THREE
+    assert tasks[1].variation_instructions == _OTHER_THREE
