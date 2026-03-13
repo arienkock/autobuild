@@ -2,7 +2,8 @@
 
 The `agent` binary (installed by https://cursor.com/install) is run in
 non-interactive (--print) mode with --force so that it auto-approves all tool
-uses without any human prompts — i.e. "auto mode".
+uses without any human prompts.  The model defaults to ``"auto"`` so Cursor
+selects the cheapest capable model automatically.
 """
 
 import json
@@ -28,7 +29,8 @@ class CursorLlm:
     Args:
         api_key: Cursor API key forwarded via ``--api-key``.  Falls back to
             the ``CURSOR_API_KEY`` environment variable when not provided.
-        model: Optional model name forwarded via ``--model``.
+        model: Model name forwarded via ``--model``.  Defaults to ``"auto"``
+            so Cursor picks the cheapest capable model automatically.
         extra_args: Additional CLI arguments inserted before the prompt.
         agent_bin: Path to the ``agent`` binary.  Defaults to discovering it
             via PATH then ``~/.local/bin/agent``.
@@ -42,7 +44,7 @@ class CursorLlm:
         agent_bin: str | None = None,
     ) -> None:
         self._api_key = api_key or os.environ.get("CURSOR_API_KEY")
-        self._model = model
+        self._model = model if model is not None else "auto"
         self._extra_args = extra_args or []
         self._agent_bin = agent_bin or _find_agent_bin()
 
