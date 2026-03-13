@@ -4,11 +4,11 @@ Any LLM backend should use these helpers so that prompts and response
 parsing remain consistent regardless of the underlying provider.
 """
 
-import ast
 import json
-import re
 import textwrap
 from pathlib import Path
+
+from json_repair import repair_json
 
 from .models import Task
 
@@ -96,22 +96,13 @@ def collect_sources(root: Path, max_bytes: int = _MAX_FILE_BYTES) -> str:
 
 
 def parse_json_response(text: str) -> dict:
-    """Extract the first ``{...}`` JSON object from *text*.
+    """Extract and repair the first JSON object from an LLM response.
 
-    Falls back to ``ast.literal_eval`` when the LLM returns a Python-style
-    dict literal with single quotes instead of valid JSON.
+    Delegates to ``json-repair`` which handles markdown fences, single quotes,
+    trailing commas, nested braces inside string values, and many other quirks
+    produced by LLMs.
     """
-    match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
-    if not match:
-        raise ValueError(f"No JSON object found in agent response:\n{text}")
-    raw = match.group()
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        try:
-            result = ast.literal_eval(raw)
-            if isinstance(result, dict):
-                return result
-        except (ValueError, SyntaxError):
-            pass
-        raise ValueError(f"Could not parse JSON object from agent response:\n{text}")
+    result = repair_json(text, return_objects=True)
+    if isinstance(result, dict):
+        return result
+    raise ValueError(f"Could not parse JSON object from agent response:\n{text}")
