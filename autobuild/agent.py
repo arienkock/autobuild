@@ -30,7 +30,7 @@ def run(
 
     for attempt in range(MAX_RETRIES):
         print(f"  {tag} attempt {attempt + 1}/{MAX_RETRIES}: implementing…", flush=True)
-        llm.implement(task, instruction, context, workspace.path)
+        llm.implement(task, instruction, context, workspace.path / workspace.src_dir)
         print(f"  {tag} running quality gates…", flush=True)
         gate_result = _run_gates(workspace, quality_gates)
         if gate_result.passed:
@@ -82,7 +82,7 @@ def _run_gates(workspace: Workspace, quality_gates: list[str]) -> _GateResult:
         result = subprocess.run(
             cmd,
             shell=True,
-            cwd=workspace.path,
+            cwd=workspace.path / workspace.src_dir,
             capture_output=True,
             text=True,
         )
