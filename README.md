@@ -7,7 +7,7 @@ Given a backlog of manually authored tasks, Autobuild:
 
 - **Spins up three parallel agents** — each pursuing a different implementation
   strategy derived from the task.
-- **Runs quality gates** (tests, coverage, lint) inside isolated workspaces.
+- **Runs quality gates** (e.g. tests, coverage, lint) inside isolated workspaces.
 - **Runs a tournament-style design review** using LLM-judged criteria weighted
   toward simplicity, modularity, and extensibility.
 - **Applies the winning implementation** back onto the main repository.

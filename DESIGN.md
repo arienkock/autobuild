@@ -45,7 +45,6 @@ class Task:
     context_files: list[str]
     variation_instructions: list[str]
     extensibility_scenario: str
-    min_coverage: int = 80
 
 @dataclass(frozen=True)
 class Workspace:

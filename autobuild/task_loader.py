@@ -26,7 +26,7 @@ def load(path: Path, default_variation_instructions: Optional[List[str]] = None)
             "(set them on the task or via default_variation_instructions in config.yaml)",
         )
     raw["variation_instructions"] = instructions
-    # Only pass fields that exist on Task (allows optional fields like min_coverage)
+    # Only pass fields that exist on Task
     data = {k: raw[k] for k in Task.__dataclass_fields__ if k in raw}
     return Task(**data)
 
