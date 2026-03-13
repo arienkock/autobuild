@@ -13,7 +13,6 @@ _BASE = {
     "id": "001",
     "title": "T",
     "description": "D",
-    "context_files": [],
     "extensibility_scenario": "E",
 }
 

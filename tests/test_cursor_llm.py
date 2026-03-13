@@ -35,7 +35,6 @@ SAMPLE_TASK = Task(
     id="001",
     title="Add greeting function",
     description="Create a function that returns a greeting string.",
-    context_files=["src/greet.py"],
     variation_instructions=[
         "Use a plain function.",
         "Use a class with a __call__ method.",
@@ -255,7 +254,6 @@ def test_implement_writes_file(tmp_path: Path):
         id="test-001",
         title="Hello world module",
         description="Create src/hello.py with a hello() function that returns 'Hello, world!'",
-        context_files=[],
         variation_instructions=["Implement it.", "Implement it.", "Implement it."],
         extensibility_scenario="N/A",
     )

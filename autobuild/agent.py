@@ -25,7 +25,7 @@ def run(
 ) -> AgentResult:
     tag = f"[{workspace.variation}]"
     instruction = _variation_instruction(task, workspace.variation)
-    context = _read_context(task, workspace)
+    context = ""
     cpu_start = time.process_time()
 
     for attempt in range(MAX_RETRIES):
@@ -56,15 +56,6 @@ def run(
 def _variation_instruction(task: Task, variation: str) -> str:
     idx = {"a": 0, "b": 1, "c": 2}[variation]
     return task.variation_instructions[idx]
-
-
-def _read_context(task: Task, workspace: Workspace) -> str:
-    parts: list[str] = []
-    for rel in task.context_files or []:
-        p = workspace.path / rel
-        if p.exists():
-            parts.append(f"### {rel}\n{p.read_text()}")
-    return "\n\n".join(parts)
 
 
 def _append_failure(context: str, gate_output: str) -> str:

@@ -9,7 +9,6 @@ _REQUIRED = {
     "id",
     "title",
     "description",
-    "context_files",
     "extensibility_scenario",
 }
 

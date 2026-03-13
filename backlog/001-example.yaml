@@ -14,7 +14,6 @@ description: |
   Create reusable components, functions and classes.
   There should be some tests that run directly when executing `npm run test`.
   No documentation or comments. Just the code.
-context_files:
 extensibility_scenario: |
   Adding multiple models that calculate different things, from finance to project management.
 

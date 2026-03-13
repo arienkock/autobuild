@@ -18,7 +18,6 @@ def _task(task_id: str, title: str = "A Task") -> Task:
         id=task_id,
         title=title,
         description="Do something.",
-        context_files=[],
         variation_instructions=["a", "b", "c"],
         extensibility_scenario="N/A",
     )

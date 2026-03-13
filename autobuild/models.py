@@ -8,7 +8,6 @@ class Task:
     id: str
     title: str
     description: str
-    context_files: list[str]
     variation_instructions: list[str]
     extensibility_scenario: str
 

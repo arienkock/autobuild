@@ -42,7 +42,6 @@ class Task:
     id: str
     title: str
     description: str
-    context_files: list[str]
     variation_instructions: list[str]
     extensibility_scenario: str
 
@@ -80,7 +79,7 @@ from pathlib import Path
 import yaml
 from .models import Task
 
-_REQUIRED = {"id", "title", "description", "context_files",
+_REQUIRED = {"id", "title", "description",
              "variation_instructions", "extensibility_scenario"}
 
 def load(path: Path) -> Task:
@@ -155,14 +154,6 @@ def run(task: Task, workspace: Workspace, llm) -> AgentResult:
 def _variation_instruction(task: Task, variation: str) -> str:
     idx = {"a": 0, "b": 1, "c": 2}[variation]
     return task.variation_instructions[idx]
-
-def _read_context(task: Task, workspace: Workspace) -> str:
-    parts = []
-    for rel in task.context_files:
-        p = workspace.path / rel
-        if p.exists():
-            parts.append(f"### {rel}\n{p.read_text()}")
-    return "\n\n".join(parts)
 
 def _append_failure(context: str, gate_output: str) -> str:
     return context + f"\n\n### Previous attempt failed\n{gate_output}"
