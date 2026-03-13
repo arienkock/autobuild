@@ -6,9 +6,9 @@ description: |
   No documentation or comments. Just the code.
 context_files:
 variation_instructions:
-  - "Optimise readability and maintainability of the code."
-  - "Optimise extensibility so the simulation can be easily extended to other projects."
-  - "Optimise for user-experience by providing a simple, intuitive interface for the simulation."
+  - "You are a ATDD expert. Write the tests first at a functional level, then the code."
+  - "You are an world-class software engineer."
+  - "You are an expert developer, but you also have a PhD in statistics and machine learning."
 extensibility_scenario: |
   If I want to introduce a different model (other than NPV) I should be able to reuse a core of simulation logic.
 min_coverage: 85

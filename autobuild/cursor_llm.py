@@ -6,20 +6,17 @@ uses without any human prompts.  The model defaults to ``"auto"`` so Cursor
 selects the cheapest capable model automatically.
 """
 
-import json
 import os
-import re
+import random
 import shutil
 import subprocess
-import textwrap
 import threading
 import time
 from pathlib import Path
 from typing import Any
 
 from .models import Task
-
-_MAX_FILE_BYTES = 50_000  # per-file cap to avoid oversized prompts
+from .prompts import build_compare_prompt, build_implement_prompt, parse_json_response
 
 
 class CursorLlm:
@@ -58,7 +55,7 @@ class CursorLlm:
         workspace_path: Path,
     ) -> None:
         """Ask the agent to implement *task* inside *workspace_path*."""
-        prompt = _build_implement_prompt(task, instruction, context)
+        prompt = build_implement_prompt(task, instruction, context)
         label = workspace_path.name  # e.g. "variation-a"
         _run_agent(
             prompt=prompt,
@@ -73,7 +70,7 @@ class CursorLlm:
 
     def compare(self, prompt: str, path_a: Path, path_b: Path) -> dict[str, Any]:
         """Ask the agent to compare two implementations and return a winner."""
-        full_prompt = _build_compare_prompt(prompt, path_a, path_b)
+        full_prompt = build_compare_prompt(prompt, path_a, path_b)
         output = _run_agent(
             prompt=full_prompt,
             bin=self._agent_bin,
@@ -82,7 +79,7 @@ class CursorLlm:
             extra_args=["--mode", "ask"] + self._extra_args,
             force=False,
         )
-        return _parse_json_response(output)
+        return parse_json_response(output)
 
 
 # ── private helpers ───────────────────────────────────────────────────────────
@@ -103,6 +100,12 @@ def _find_agent_bin() -> str:
 
 
 _HEARTBEAT_INTERVAL = 5  # seconds between heartbeat prints
+_CLI_CONFIG_RACE_MSG = "cli-config.json"  # substring in the known ENOENT race error
+_MAX_RETRIES = 5
+
+
+def _is_config_race_error(text: str) -> bool:
+    return _CLI_CONFIG_RACE_MSG in text
 
 
 def _run_agent(
@@ -130,108 +133,51 @@ def _run_agent(
     if heartbeat_label is not None:
         return _run_agent_with_heartbeat(cmd, heartbeat_label)
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
+    for attempt in range(_MAX_RETRIES):
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            return result.stdout
+        output = result.stderr or result.stdout
+        if _is_config_race_error(output) and attempt < _MAX_RETRIES - 1:
+            delay = random.uniform(1, 3) * (attempt + 1)
+            time.sleep(delay)
+            continue
         raise RuntimeError(
-            f"cursor-agent failed (exit {result.returncode}):\n"
-            f"{result.stderr or result.stdout}"
+            f"cursor-agent failed (exit {result.returncode}):\n{output}"
         )
-    return result.stdout
+    raise RuntimeError("cursor-agent failed after max retries")
 
 
 def _run_agent_with_heartbeat(cmd: list[str], label: str) -> str:
     """Run *cmd*, printing a heartbeat line every few seconds while it runs."""
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    start = time.monotonic()
-    stop_event = threading.Event()
+    for attempt in range(_MAX_RETRIES):
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        start = time.monotonic()
+        stop_event = threading.Event()
 
-    def _heartbeat() -> None:
-        while not stop_event.wait(timeout=_HEARTBEAT_INTERVAL):
-            elapsed = int(time.monotonic() - start)
-            print(f"  [{label}] ⟳ still running ({elapsed}s)…", flush=True)
+        def _heartbeat() -> None:
+            while not stop_event.wait(timeout=_HEARTBEAT_INTERVAL):
+                elapsed = int(time.monotonic() - start)
+                print(f"  [{label}] ⟳ still running ({elapsed}s)…", flush=True)
 
-    hb_thread = threading.Thread(target=_heartbeat, daemon=True)
-    hb_thread.start()
-    try:
-        stdout, _ = proc.communicate()
-    finally:
-        stop_event.set()
-        hb_thread.join()
+        hb_thread = threading.Thread(target=_heartbeat, daemon=True)
+        hb_thread.start()
+        try:
+            stdout, _ = proc.communicate()
+        finally:
+            stop_event.set()
+            hb_thread.join()
 
-    if proc.returncode != 0:
+        if proc.returncode == 0:
+            return stdout
+        if _is_config_race_error(stdout) and attempt < _MAX_RETRIES - 1:
+            delay = random.uniform(1, 3) * (attempt + 1)
+            print(f"  [{label}] cli-config race detected, retrying in {delay:.1f}s…", flush=True)
+            time.sleep(delay)
+            continue
         raise RuntimeError(
             f"cursor-agent failed (exit {proc.returncode}):\n{stdout}"
         )
-    return stdout
+    raise RuntimeError(f"cursor-agent failed after {_MAX_RETRIES} retries")
 
 
-def _build_implement_prompt(task: Task, instruction: str, context: str) -> str:
-    parts = [
-        f"Task: {task.title}",
-        f"Description: {task.description}",
-        "",
-        f"Instruction: {instruction}",
-    ]
-    if context.strip():
-        parts += ["", "Context:", context]
-    parts += [
-        "",
-        "Implement the feature described above.",
-        "Write all necessary code files in the workspace.",
-    ]
-    return "\n".join(parts)
-
-
-def _build_compare_prompt(criterion_prompt: str, path_a: Path, path_b: Path) -> str:
-    a_listing = _collect_sources(path_a)
-    b_listing = _collect_sources(path_b)
-    return textwrap.dedent(f"""\
-        {criterion_prompt}
-
-        ## Implementation A
-
-        {a_listing}
-
-        ## Implementation B
-
-        {b_listing}
-
-        Respond with JSON only: {{"winner": "A" | "B" | "tie", "reasoning": "..."}}
-    """)
-
-
-_SOURCE_EXTENSIONS = {
-    ".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".scss",
-    ".java", ".go", ".rs", ".rb", ".c", ".cpp", ".h", ".hpp",
-}
-
-_IGNORE_DIRS = {"node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build"}
-
-
-def _collect_sources(root: Path, max_bytes: int = _MAX_FILE_BYTES) -> str:
-    """Return a concatenated markdown listing of source files under *root*/src."""
-    src = root / "src"
-    search_root = src if src.exists() else root
-    parts: list[str] = []
-    for p in sorted(search_root.rglob("*")):
-        if not p.is_file():
-            continue
-        if any(part in _IGNORE_DIRS for part in p.parts):
-            continue
-        if p.suffix.lower() not in _SOURCE_EXTENSIONS:
-            continue
-        rel = p.relative_to(root)
-        content = p.read_text(errors="replace")
-        if len(content) > max_bytes:
-            content = content[:max_bytes] + "\n... (truncated)"
-        lang = p.suffix.lstrip(".")
-        parts.append(f"### {rel}\n```{lang}\n{content}\n```")
-    return "\n\n".join(parts) if parts else "(no source files found)"
-
-
-def _parse_json_response(text: str) -> dict[str, Any]:
-    """Extract the first ``{...}`` JSON object from *text*."""
-    match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
-    if not match:
-        raise ValueError(f"No JSON object found in agent response:\n{text}")
-    return json.loads(match.group())

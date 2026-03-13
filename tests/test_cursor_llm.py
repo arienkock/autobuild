@@ -1,4 +1,4 @@
-"""Tests for autobuild.cursor_llm.
+"""Tests for autobuild.cursor_llm and autobuild.prompts.
 
 Unit tests cover pure helpers (prompt builders, JSON parser, source collector)
 without spawning any subprocess.
@@ -18,12 +18,14 @@ import pytest
 
 from autobuild.cursor_llm import (
     CursorLlm,
-    _build_compare_prompt,
-    _build_implement_prompt,
-    _collect_sources,
     _find_agent_bin,
-    _parse_json_response,
     _run_agent,
+)
+from autobuild.prompts import (
+    build_compare_prompt as _build_compare_prompt,
+    build_implement_prompt as _build_implement_prompt,
+    collect_sources as _collect_sources,
+    parse_json_response as _parse_json_response,
 )
 from autobuild.models import Task
 
@@ -244,8 +246,11 @@ def test_cursor_llm_compare_parses_response(tmp_workspace: Path):
 @pytest.mark.integration
 def test_implement_writes_file(tmp_path: Path):
     """Calls the real cursor-agent to create a simple Python file."""
+    import subprocess as _sp
     src = tmp_path / "src"
     src.mkdir()
+    _sp.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    _sp.run(["git", "commit", "--allow-empty", "-m", "init"], cwd=tmp_path, check=True, capture_output=True)
     task = Task(
         id="test-001",
         title="Hello world module",

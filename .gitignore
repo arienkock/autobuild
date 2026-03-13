@@ -16,8 +16,5 @@ env/
 .coverage
 htmlcov/
 
-# Autobuild runtime output
-.autobuild/results/
-
 # macOS
 .DS_Store

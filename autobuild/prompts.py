@@ -1,0 +1,103 @@
+"""Shared prompt construction and response parsing for all LLM implementations.
+
+Any LLM backend should use these helpers so that prompts and response
+parsing remain consistent regardless of the underlying provider.
+"""
+
+import ast
+import json
+import re
+import textwrap
+from pathlib import Path
+
+from .models import Task
+
+_MAX_FILE_BYTES = 50_000  # per-file cap to avoid oversized prompts
+
+_SOURCE_EXTENSIONS = {
+    ".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".scss",
+    ".java", ".go", ".rs", ".rb", ".c", ".cpp", ".h", ".hpp",
+}
+
+_IGNORE_DIRS = {"node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build"}
+
+
+def build_implement_prompt(task: Task, instruction: str, context: str) -> str:
+    """Return the prompt used to ask an LLM to implement *task*."""
+    parts = [
+        f"Task: {task.title}",
+        f"Description: {task.description}",
+        "",
+        f"Instruction: {instruction}",
+    ]
+    if context.strip():
+        parts += ["", "Context:", context]
+    parts += [
+        "",
+        "Implement the feature described above.",
+        "Write all necessary code files in the workspace.",
+        "The code will be judged based on simplicity, modularity, and extensibility.",
+    ]
+    return "\n".join(parts)
+
+
+def build_compare_prompt(criterion_prompt: str, path_a: Path, path_b: Path) -> str:
+    """Return the prompt used to ask an LLM to compare two implementations."""
+    a_listing = collect_sources(path_a)
+    b_listing = collect_sources(path_b)
+    return textwrap.dedent(f"""\
+        {criterion_prompt}
+
+        ## Implementation A
+
+        {a_listing}
+
+        ## Implementation B
+
+        {b_listing}
+
+        Respond with JSON only: {{"winner": "A" | "B" | "tie", "reasoning": "..."}}
+    """)
+
+
+def collect_sources(root: Path, max_bytes: int = _MAX_FILE_BYTES) -> str:
+    """Return a concatenated markdown listing of source files under *root*/src."""
+    src = root / "src"
+    search_root = src if src.exists() else root
+    parts: list[str] = []
+    for p in sorted(search_root.rglob("*")):
+        if not p.is_file():
+            continue
+        if any(part in _IGNORE_DIRS for part in p.parts):
+            continue
+        if p.suffix.lower() not in _SOURCE_EXTENSIONS:
+            continue
+        rel = p.relative_to(root)
+        content = p.read_text(errors="replace")
+        if len(content) > max_bytes:
+            content = content[:max_bytes] + "\n... (truncated)"
+        lang = p.suffix.lstrip(".")
+        parts.append(f"### {rel}\n```{lang}\n{content}\n```")
+    return "\n\n".join(parts) if parts else "(no source files found)"
+
+
+def parse_json_response(text: str) -> dict:
+    """Extract the first ``{...}`` JSON object from *text*.
+
+    Falls back to ``ast.literal_eval`` when the LLM returns a Python-style
+    dict literal with single quotes instead of valid JSON.
+    """
+    match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
+    if not match:
+        raise ValueError(f"No JSON object found in agent response:\n{text}")
+    raw = match.group()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        try:
+            result = ast.literal_eval(raw)
+            if isinstance(result, dict):
+                return result
+        except (ValueError, SyntaxError):
+            pass
+        raise ValueError(f"Could not parse JSON object from agent response:\n{text}")
