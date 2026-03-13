@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import combinations
 from pathlib import Path
 from typing import Dict, List
@@ -11,8 +12,8 @@ def rank(task: Task, workspaces: List[Workspace], llm) -> JudgeResult:
     criteria = _load_criteria()
     all_comparisons: List[Comparison] = []
     pairs = list(combinations(workspaces, 2))
-    total = len(pairs) * len(criteria)
-    step = 0
+    jobs = [(a, b, criterion) for a, b in pairs for criterion in criteria]
+    total = len(jobs)
 
     print(
         f"  Judging {len(workspaces)} variations across {len(criteria)} criteria"
@@ -22,14 +23,19 @@ def rank(task: Task, workspaces: List[Workspace], llm) -> JudgeResult:
 
     # pairwise tournament across all criteria
     scores: Dict[str, float] = {w.variation: 0.0 for w in workspaces}
-    for a, b in pairs:
-        for criterion in criteria:
-            step += 1
+    with ThreadPoolExecutor() as executor:
+        future_to_job = {
+            executor.submit(_compare, task, a, b, criterion, llm): (a, b, criterion)
+            for a, b, criterion in jobs
+        }
+
+        for step, future in enumerate(as_completed(future_to_job), start=1):
+            a, b, criterion = future_to_job[future]
             print(
                 f"  [{step}/{total}] {criterion.name}: {a.variation} vs {b.variation}…",
                 flush=True,
             )
-            comparison = _compare(task, a, b, criterion, llm)
+            comparison = future.result()
             all_comparisons.append(comparison)
             winner_label = (
                 a.variation if comparison.winner == "A"
