@@ -50,7 +50,7 @@ def _variation_instruction(task: Task, variation: str) -> str:
 
 def _read_context(task: Task, workspace: Workspace) -> str:
     parts: list[str] = []
-    for rel in task.context_files:
+    for rel in task.context_files or []:
         p = workspace.path / rel
         if p.exists():
             parts.append(f"### {rel}\n{p.read_text()}")
