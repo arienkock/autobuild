@@ -200,3 +200,51 @@ def test_apply_winner_modified_file_stays_in_src_dir(tmp_path):
     assert expected.read_text() == "// modified by LLM"
     assert not (repo_root / "utils").exists(), \
         "Modified file must not appear at repo root — must stay inside src_dir"
+
+
+def test_apply_winner_ignores_node_modules(tmp_path):
+    """node_modules/ created in the workspace must never be copied to the repo."""
+    repo_root = tmp_path / "repo"
+    (repo_root / "src").mkdir(parents=True)
+
+    workspace = _make_workspace(tmp_path / "workspaces")
+    git_root = workspace.path / workspace.src_dir
+
+    # Simulate the LLM (or npm install) creating node_modules inside the workspace
+    (git_root / "node_modules" / "some-pkg").mkdir(parents=True)
+    (git_root / "node_modules" / "some-pkg" / "index.js").write_text("module.exports={};")
+    (git_root / "index.js").write_text("const x = require('some-pkg');")
+
+    # node_modules must be gitignored — as _ensure_gitignore guarantees
+    (git_root / ".gitignore").write_text("node_modules/\n")
+
+    orchestrator._apply_winner(workspace, repo_root)
+
+    assert not (repo_root / "src" / "node_modules").exists(), \
+        "node_modules must not be copied into the repo"
+    assert (repo_root / "src" / "index.js").exists(), \
+        "Legitimate source files must still be copied"
+
+
+def test_apply_winner_works_when_repo_root_is_a_git_repo(tmp_path):
+    """_apply_winner must work correctly even when repo_root is itself a git repo.
+
+    The workspace git (in /tmp) and the outer repo git are completely separate;
+    git commands in _apply_winner must operate only on the workspace git.
+    """
+    repo_root = tmp_path / "repo"
+    (repo_root / "src").mkdir(parents=True)
+
+    # Make repo_root a git repo
+    subprocess.run(["git", *_GIT_ID, "init"], cwd=repo_root, check=True, capture_output=True)
+    subprocess.run(["git", *_GIT_ID, "commit", "--allow-empty", "-m", "init"],
+                   cwd=repo_root, check=True, capture_output=True)
+
+    workspace = _make_workspace(tmp_path / "workspaces")
+    git_root = workspace.path / workspace.src_dir
+    (git_root / "app.js").write_text("console.log('hello');")
+
+    orchestrator._apply_winner(workspace, repo_root)
+
+    assert (repo_root / "src" / "app.js").exists(), \
+        "Winner files must be copied even when repo_root is a git repo"

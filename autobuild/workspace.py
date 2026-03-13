@@ -11,6 +11,12 @@ _VARIATIONS: Iterable[str] = ("a", "b", "c")
 # Minimal git identity for the throwaway initial commit.
 _GIT_ENV_ARGS = ["-c", "user.email=autobuild", "-c", "user.name=autobuild"]
 
+# Patterns that must never be copied back into the real repo.
+# node_modules: only excluded when a .gitignore in the git root says so;
+# we guarantee one is always present rather than relying on the project's
+# repo-root .gitignore (which is not copied into the workspace).
+_WORKSPACE_GITIGNORE_ENTRIES = ["node_modules/"]
+
 
 @contextmanager
 def provision(
@@ -43,6 +49,7 @@ def provision(
             # relative to src_dir. _apply_winner then copies them under
             # repo_root/src_dir, making it structurally impossible for
             # the winner's files to land outside src_dir in the real repo.
+            _ensure_gitignore(dest / src_dir)
             _init_git(dest / src_dir)
             workspaces.append(
                 Workspace(task_id=task.id, variation=v, path=dest, src_dir=src_dir),
@@ -53,6 +60,22 @@ def provision(
             print(f"  Workspaces kept at: {base}")
         else:
             shutil.rmtree(base, ignore_errors=True)
+
+
+def _ensure_gitignore(path: Path) -> None:
+    """Guarantee that the workspace .gitignore contains all required entries.
+
+    Appends any missing entries to an existing .gitignore rather than
+    overwriting it, so project-level ignore rules are preserved.
+    """
+    gitignore = path / ".gitignore"
+    existing = gitignore.read_text() if gitignore.exists() else ""
+    missing = [e for e in _WORKSPACE_GITIGNORE_ENTRIES if e not in existing]
+    if missing:
+        with gitignore.open("a") as fh:
+            if existing and not existing.endswith("\n"):
+                fh.write("\n")
+            fh.write("\n".join(missing) + "\n")
 
 
 def _init_git(path: Path) -> None:
