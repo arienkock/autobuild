@@ -115,7 +115,7 @@ def test_collect_sources_truncates_large_files(tmp_workspace: Path):
 
 def test_collect_sources_no_python_files(tmp_path: Path):
     listing = _collect_sources(tmp_path)
-    assert "no Python source files found" in listing
+    assert "no source files found" in listing
 
 
 def test_collect_sources_falls_back_to_root_without_src(tmp_path: Path):

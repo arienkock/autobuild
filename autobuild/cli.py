@@ -25,6 +25,16 @@ def main(argv: list[str] | None = None) -> None:
         default=Path(".autobuild") / "results",
         help="Directory where per-task results will be written.",
     )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run all unbuilt tasks instead of stopping after the first one.",
+    )
+    parser.add_argument(
+        "--task",
+        metavar="TASK_ID",
+        help="Build a specific task by ID, ignoring any existing results.",
+    )
 
     args = parser.parse_args(argv)
     llm = create_default_llm()
@@ -34,6 +44,8 @@ def main(argv: list[str] | None = None) -> None:
         backlog_dir=args.backlog_dir,
         results_dir=args.results_dir,
         llm=llm,
+        run_all=args.all,
+        force_task_id=args.task,
     )
 
 

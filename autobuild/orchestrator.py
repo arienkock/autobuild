@@ -8,12 +8,36 @@ from .models import Task
 from .task_loader import load_backlog
 
 
-def run(repo_root: Path, backlog_dir: Path, results_dir: Path, llm) -> None:
-    """Run the autobuild loop over all tasks in the backlog."""
+def run(
+    repo_root: Path,
+    backlog_dir: Path,
+    results_dir: Path,
+    llm,
+    run_all: bool = False,
+    force_task_id: str | None = None,
+) -> None:
+    """Run the autobuild loop over tasks in the backlog.
+
+    By default stops after building the first unbuilt task.  Pass
+    ``run_all=True`` to process every unbuilt task in one invocation, or
+    ``force_task_id`` to build a specific task regardless of prior results.
+    """
     config = load_config(repo_root)
     for task in load_backlog(backlog_dir):
+        if force_task_id is not None:
+            if task.id != force_task_id:
+                continue
+        else:
+            result_file = results_dir / task.id / "results.json"
+            if result_file.exists():
+                print(f"\n── Task {task.id}: {task.title} [already built, skipping]")
+                continue
+
         print(f"\n── Task {task.id}: {task.title}")
         _run_task(task, repo_root, results_dir, llm, config.quality_gates, config.src_dir)
+
+        if not run_all:
+            break
 
 
 def _run_task(
