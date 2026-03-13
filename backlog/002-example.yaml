@@ -1,0 +1,16 @@
+id: "002"
+title: Extend for throughput forecasting
+description: |
+  Implement throughput forecasting as a new model that reuses the core of the monte carlo simulation.
+  The model takes a throughput distribution, the time period that the throughput is applied to (daily, weekly etc.), backlog length, start date and should return simulation results.
+  An optional parameter is a capacity per time interval (daily, weekly etc.). If the capacity is provided, the throughput for that time period is multiplied by the capacity (e.g. avialble number of workers).
+  The simulation results should show how many items are left on the backlog at each point in time. 
+context_files:
+variation_instructions:
+  - "You are a ATDD expert. Truly a programming genius. Write the tests first at a functional level, then the code."
+  - "You are an expert developer, but you also an expert in decision science and behavioural economics."
+  - "You are an expert developer, but you also have a PhD in statistics and machine learning."
+extensibility_scenario: |
+  Adding new models in the future should not require ANY changes to the core simulation logic. New variable types and distributions will be added in the future.
+min_coverage: 85
+
