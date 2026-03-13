@@ -1,19 +1,13 @@
 id: "001"
-title: "Add a search endpoint"
+title: Create a monte carlo simulation for Net Present Value"
 description: |
-  Implement a basic full-text search endpoint over the existing items API.
-  The endpoint should accept a query string and return matching items ordered
-  by relevance.
+  Create a monte carlo simulation for Net Present Value that can be used to estimate the probability of success of a project.
 context_files:
-  - "src/app.py"
-  - "src/search.py"
 variation_instructions:
-  - "Optimise for minimal code changes to existing modules. Prefer small, targeted edits."
-  - "Optimise for a clean, layered architecture, even if it means more new files."
-  - "Optimise for future evolution: assume the search logic will grow significantly."
+  - "Optimise readability and maintainability of the code."
+  - "Optimise extensibility so the simulation can be easily extended to other projects."
+  - "Optimise for user-experience by providing a simple, intuitive interface for the simulation."
 extensibility_scenario: |
-  Six months from now, the product team wants to support filtering by multiple
-  fields (category, owner, creation date) and pluggable ranking strategies
-  without rewriting the core search API.
+  If I want to introduce a different model (other than NPV) I should be able to reuse a core of simulation logic.
 min_coverage: 85
 
