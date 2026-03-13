@@ -70,7 +70,7 @@ class CursorLlm:
 
     def compare(self, prompt: str, path_a: Path, path_b: Path) -> dict[str, Any]:
         """Ask the agent to compare two implementations and return a winner."""
-        full_prompt = build_compare_prompt(prompt, path_a, path_b)
+        full_prompt = build_compare_prompt(prompt, path_a, path_b, include_content=False)
         output = _run_agent(
             prompt=full_prompt,
             bin=self._agent_bin,

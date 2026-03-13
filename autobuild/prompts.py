@@ -41,20 +41,34 @@ def build_implement_prompt(task: Task, instruction: str, context: str) -> str:
     return "\n".join(parts)
 
 
-def build_compare_prompt(criterion_prompt: str, path_a: Path, path_b: Path) -> str:
-    """Return the prompt used to ask an LLM to compare two implementations."""
-    a_listing = collect_sources(path_a)
-    b_listing = collect_sources(path_b)
+def build_compare_prompt(
+    criterion_prompt: str,
+    path_a: Path,
+    path_b: Path,
+    include_content: bool = True,
+) -> str:
+    """Return the prompt used to ask an LLM to compare two implementations.
+
+    When *include_content* is False the file contents are omitted and the agent
+    is expected to read the source files itself (e.g. the cursor agent which has
+    built-in file-reading tools).
+    """
+    if include_content:
+        a_body = collect_sources(path_a)
+        b_body = collect_sources(path_b)
+    else:
+        a_body = f"Path: {path_a}"
+        b_body = f"Path: {path_b}"
     return textwrap.dedent(f"""\
         {criterion_prompt}
 
         ## Implementation A
 
-        {a_listing}
+        {a_body}
 
         ## Implementation B
 
-        {b_listing}
+        {b_body}
 
         Respond with JSON only: {{"winner": "A" | "B" | "tie", "reasoning": "..."}}
     """)
