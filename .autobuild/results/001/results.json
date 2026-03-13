@@ -2,38 +2,71 @@
   "agents": [
     {
       "variation": "a",
-      "success": false,
-      "reason": "Gates failed after 3 attempts"
+      "success": true,
+      "reason": "Passed on attempt 1",
+      "cpu_time_seconds": 0.01
     },
     {
       "variation": "b",
       "success": true,
-      "reason": "Passed on attempt 2"
+      "reason": "Passed on attempt 1",
+      "cpu_time_seconds": 0.009
     },
     {
       "variation": "c",
       "success": true,
-      "reason": "Passed on attempt 1"
+      "reason": "Passed on attempt 1",
+      "cpu_time_seconds": 0.009
     }
   ],
   "verdict": {
-    "winner": "b",
-    "reasoning": "Tournament scores:\n  b: 3.5 points\n  c: 0.0 points",
+    "winner": "c",
+    "reasoning": "Tournament scores:\n  c: 4.5 points\n  b: 4.0 points\n  a: 2.0 points",
     "comparisons": [
       {
         "criterion": "extensibility",
-        "winner": "A",
-        "reasoning": "Implementation A has a clear separation between the generic simulation engine (`runMonteCarlo`), the project model (`createSimpleProjectModel`), the NPV calculation (`computeNpv`), and the UI wiring (`main.js`). The Monte Carlo loop works over an abstract `project.sampleScenario(random)` that returns an object with an `npv`, making it straightforward to plug in alternative models by creating new project factories that implement `sampleScenario` without changing the core simulation code. Random number generation is also abstracted behind a `random.next()` interface. In contrast, Implementation B\u2019s `runSimulation` is tightly coupled to NPV-specific parameters, constructs cash flows internally, and calls `npvModule.npv` directly, so introducing a different model would either require modifying that function or duplicating much of its logic. Overall, A minimizes changes to existing code and exposes better extension points for new models, making it more resilient to future requirements."
+        "winner": "B",
+        "reasoning": "Implementation B concentrates Monte Carlo concerns (RNG, seeding, normal sampling, cash\u2011flow simulation loop, statistics like percentiles) into a single domain module (`npv.js`) that is already model\u2011agnostic in many places, and is covered by tests. To introduce a different model while reusing the core, you can factor `simulateCashFlows` into a more generic Monte Carlo engine that: (1) generates flows using the existing RNG/normal logic, and (2) delegates the per\u2011scenario evaluation (currently `npv`) to an injected function, while keeping the statistics/percentile code unchanged. Because the UI talks only to `simulateCashFlows` and the randomness/statistics are isolated from presentation, most future changes can be done by adding new model functions or a small extension point, rather than modifying scattered logic. In contrast, A mixes sampling code into `app.js`, has the simulation loop tightly coupled to NPV and a single success condition (`value > 0`), and lacks reusable, tested utilities for RNG and statistics, so reusing a core simulation for a different model would require more structural refactoring and more changes to existing code rather than primarily adding new code."
       },
       {
         "criterion": "modularity",
-        "winner": "A",
-        "reasoning": "Implementation A has a clearer separation between pure domain logic, random number generation, Monte Carlo orchestration, project modeling, formatting, and UI wiring. Core functionality (`computeNpv`, `runMonteCarlo`, RNG, project model) lives in small, focused ES modules with narrow, data-based interfaces, and is completely decoupled from the DOM, making it easy to reuse in other contexts (e.g. different UIs, CLIs, services, tests). Implementation B mixes concerns more tightly: `app.js` talks directly to `window.MonteCarlo`, uses timeouts, and intertwines UI state with simulation setup, while the Monte Carlo logic is bundled with RNG and depends on a specific `npv` module structure. Although B does have some modularity (`npv`, `monteCarlo`, `app`), A\u2019s structure is more cohesive, testable, and reusable across environments, so A is the better modular design."
+        "winner": "B",
+        "reasoning": "Implementation B has a cleaner separation between UI and domain logic: all simulation, RNG, validation, NPV calculation, and statistics (percentiles) live in a dedicated module (`npv.js`) with small, focused functions, while `main.js` only handles DOM wiring, parsing, formatting, and calling `simulateCashFlows`. The core API (`simulateCashFlows`, `npv`, `percentile`, `createRng`, `normalBoxMuller`) exposes narrow, reusable interfaces that can easily be reused in other contexts (CLI, other UIs, tests). In contrast, Implementation A mixes concerns by keeping sampling utilities (`normalSample`, `createCashFlowSampler`) and number parsing inside the UI module (`app.js`), making the boundary between UI and domain logic less clear and reducing reusability of those pieces."
       },
       {
         "criterion": "simplicity",
         "winner": "A",
-        "reasoning": "Implementation A introduces more files and abstractions, but they closely match the domain (random source, NPV calculation, project model, Monte Carlo runner, formatting utilities, and a tiny hand-rolled test harness). Each abstraction has a clear, single responsibility and the core Monte Carlo logic becomes easy to follow by reading `computeNpv`, `createSimpleProjectModel.sampleScenario`, and `runMonteCarlo` in isolation. By contrast, Implementation B\u2019s logic is more entangled: browser/Node UMD wrappers, global `window.MonteCarlo`, inline RNG and normal sampling, UI concerns and validation mixed with orchestration, and a `setTimeout` indirection all add constructs that mainly serve other constructs or environment concerns rather than clarifying the simulation itself. While A has more total lines (including tests and formatting helpers), those lines generally reduce cognitive load on the core feature; B\u2019s monolithic style, environment ceremony, and cross-cutting concerns increase incidental complexity for understanding and modifying the core simulation. Therefore, A has less incidental complexity overall."
+        "reasoning": "Implementation A introduces fewer concepts and abstractions around the core Monte Carlo NPV logic. The code is split into three small modules (`app.js`, `monteCarloNpv.js`, `npv.js`) with straightforward helpers (mean, stdDev, normalSample, createCashFlowSampler) that directly support the simulation. In contrast, Implementation B adds substantial additional surface area: a large HTML/CSS UI, extensive DOM wiring in `main.js`, a seeded RNG, Box\u2013Muller with spare value caching, percentile calculation, distribution markers, trend badges, and detailed validation and formatting. Many of these constructs (UI state tracking, marker positioning, trend badges, deterministic RNG, percentile helpers) exist primarily to support other newly introduced constructs rather than the essential NPV simulation itself, increasing cognitive load. Therefore A has less incidental complexity around the shared core feature."
+      },
+      {
+        "criterion": "extensibility",
+        "winner": "B",
+        "reasoning": "Implementation B has a clearer separation between concerns that makes the core simulation logic easier to reuse for other models. The random sampling is encapsulated in `random.js`, financial math in `npv.js`, and core Monte Carlo loop plus statistics in `runMonteCarlo` in `simulation.js`. That loop is already structured as: (1) generate cash flows, (2) compute a scalar value for each iteration, (3) aggregate distribution statistics (mean, std dev, quantiles, probability positive). To introduce a different model, you can change or parameterize just the value calculation (step 2) while reusing the same iteration, sampling, and aggregation logic; the quantile and sorting helpers are also model-agnostic. In A, the simulation function `runNpvSimulation` is more tightly named and shaped around NPV, and its output structure (`meanNpv`, `stdDevNpv`, `successProbability`, `npvValues`) bakes NPV semantics directly into the simulation API, so adding new models would more often require modifying that function or duplicating it instead of cleanly reusing a generic core."
+      },
+      {
+        "criterion": "modularity",
+        "winner": "B",
+        "reasoning": "Implementation B has a clearer modular structure and more reusable building blocks. Core concerns are separated into dedicated modules: UI and formatting in main.js, financial math in npv.js (with both npv and presentValue plus argument validation), random number generation in random.js, and simulation logic/statistics in simulation.js (including reusable helpers like sortNumbers and quantile). A, by contrast, embeds the normal random sampling and cash-flow sampler creation inside the UI module (app.js), and keeps statistical helpers (mean, stdDev) local to monteCarloNpv.js, which reduces their reusability. While A\u2019s injection of cashFlowSampler into runNpvSimulation is a nicely decoupled interface, B more than compensates with its generally stronger separation of concerns and a richer set of small, focused functions that can be reused in other contexts without dragging along UI or configuration logic."
+      },
+      {
+        "criterion": "simplicity",
+        "winner": "A",
+        "reasoning": "A has fewer files, fewer helpers, and a more direct path from inputs to Monte Carlo NPV results. The core simulation is expressed with minimal abstractions: simple parsing, a straightforward normal sampler, a cash-flow sampler, and a small NPV/summary module. In B, many constructs (formatters, extensive validation, randomNormal cache, quantile helpers, presentValue which is unused, and extra UI wiring) add lines of code and mental overhead that are orthogonal to understanding the core Monte Carlo NPV logic. As a result, understanding the primary behavior (how NPVs are simulated and summarized) requires tracking more concepts in B than in A, so A has less incidental complexity."
+      },
+      {
+        "criterion": "extensibility",
+        "winner": "A",
+        "reasoning": "Implementation A exposes more reusable, lower-level primitives (`npv`, `createRng`, `normalBoxMuller`, `percentile`) alongside the NPV-specific `simulateCashFlows`. The Monte Carlo loop is relatively self-contained and built on those primitives, so introducing a new model can be done by adding a new simulate function that reuses the same RNG, distribution sampling, and percentile logic without modifying the existing NPV flow. It also supports seeding, which makes new models easier to test and compare. In contrast, Implementation B\u2019s `runMonteCarlo` hardcodes both the cash-flow generation and the NPV-based evaluation into one function that directly depends on `Math.random`, making it less straightforward to plug in alternate models or reuse the simulation core without restructuring that function. Overall, A requires less invasive change to extend and is more resilient to new requirements because the building blocks are already factored out and tested independently."
+      },
+      {
+        "criterion": "modularity",
+        "winner": "B",
+        "reasoning": "Implementation B has a clearer modular decomposition: UI wiring in main.js, financial math in npv.js, random-number utilities in random.js, and Monte Carlo orchestration in simulation.js. Each module has a narrow responsibility (e.g., randomNormalWith for generic normal draws, presentValue for single discounted cash flows, npv for full cash-flow streams). This separation makes it easier to reuse the random utilities or financial functions independently of the Monte Carlo logic, and to reuse runMonteCarlo in different UIs or environments. In contrast, Implementation A bundles financial math, RNG creation, distribution sampling, and the entire simulation pipeline into a single npv.js module, which is still reasonable but slightly less clean in terms of isolating concerns and enabling reuse of small, focused components."
+      },
+      {
+        "criterion": "simplicity",
+        "winner": "B",
+        "reasoning": "Implementation B introduces fewer and simpler abstractions overall and keeps the UI logic thinner. Its `main.js` does straightforward form parsing, validation, and a single call to `runMonteCarlo`, with minimal extra state (no trend badges, markers, or run statistics), so the cognitive load to understand the core flow is lower. On the simulation side, both A and B need helpers like NPV calculation and percentile/quantile logic, but A adds extra constructs like seedable RNG, distribution markers, trend badges, and more output fields and DOM wiring, as well as a large, highly-styled HTML/CSS surface that is incidental to the core Monte Carlo logic. B\u2019s extra helpers (`sortNumbers`, `quantile`, `randomNormalWith`) are directly in support of the simulation, and aside from an unused `presentValue` helper, there is little that exists only to support other incidental constructs. Taken together, B has less incidental complexity than A."
       }
     ]
   }
