@@ -5,162 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Monte Carlo Simulation</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: system-ui, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-      padding: 2rem;
-      min-height: 100vh;
-    }
-
-    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: #f8fafc; }
-
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    label { font-size: 0.9rem; color: #94a3b8; }
-
-    input[type="number"] {
-      width: 120px;
-      padding: 0.4rem 0.6rem;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      color: #f1f5f9;
-      font-size: 0.9rem;
-    }
-
-    button {
-      padding: 0.4rem 1.2rem;
-      background: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-
-    button:hover { background: #2563eb; }
-
-    .model-info {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 2rem;
-      font-size: 0.85rem;
-      color: #94a3b8;
-    }
-
-    .model-info strong { color: #cbd5e1; }
-
-    .model-info ul { margin-top: 0.4rem; padding-left: 1.2rem; }
-
-    .model-info li { margin-top: 0.2rem; }
-
-    #output { display: flex; flex-direction: column; gap: 1.5rem; }
-
-    svg.histogram { display: block; border-radius: 6px; }
-
-    .bar { fill: #3b82f6; opacity: 0.8; }
-
-    .band { opacity: 0.15; }
-
-    .band-2 { fill: #f59e0b; }
-
-    .band-1 { fill: #10b981; }
-
-    .marker { stroke-width: 1.5; stroke-dasharray: 4 3; }
-
-    .mean-line { stroke: #f8fafc; }
-
-    .median-line { stroke: #f59e0b; }
-
-    .stats-panel {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 0.75rem;
-    }
-
-    .stat-row {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-    }
-
-    .stat-label {
-      font-size: 0.75rem;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .stat-value {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #f1f5f9;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .legend {
-      display: flex;
-      gap: 1.5rem;
-      font-size: 0.8rem;
-      color: #94a3b8;
-      align-items: center;
-    }
-
-    .legend-item { display: flex; align-items: center; gap: 0.4rem; }
-
-    .legend-swatch {
-      width: 24px;
-      height: 3px;
-    }
-
-    .swatch-mean { background: #f8fafc; }
-    .swatch-median { background: #f59e0b; }
-    .swatch-1sigma { background: #10b981; height: 12px; opacity: 0.4; }
-    .swatch-2sigma { background: #f59e0b; height: 12px; opacity: 0.3; }
+    body { font-family: sans-serif; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .input-group { margin-bottom: 10px; }
+    label { display: inline-block; width: 100px; }
+    button { padding: 10px 20px; cursor: pointer; }
+    #results { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
   </style>
 </head>
 <body>
-  <h1>Monte Carlo Simulation</h1>
-
-  <div class="controls">
-    <label for="iterations">Iterations</label>
-    <input type="number" id="iterations" value="10000" min="100" max="1000000" step="1000">
-    <button id="run-btn">Run</button>
+  <div class="container">
+    <h1>Monte Carlo Simulation</h1>
+    
+    <div class="input-group">
+      <label for="iterations">Iterations:</label>
+      <input type="number" id="iterations" value="10000">
+    </div>
+    
+    <button id="runBtn">Run Simulation</button>
+    
+    <div id="results"></div>
   </div>
 
-  <div class="model-info">
-    <strong>Model: Sum of variables</strong>
-    <ul>
-      <li>Normal(&mu;=50, &sigma;=10)</li>
-      <li>Uniform(0, 30)</li>
-      <li>Triangular(min=5, mode=15, max=25)</li>
-      <li>Constant(10)</li>
-    </ul>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-swatch swatch-mean"></div> Mean</div>
-    <div class="legend-item"><div class="legend-swatch swatch-median"></div> Median</div>
-    <div class="legend-item"><div class="legend-swatch swatch-1sigma"></div> &plusmn;1&sigma;</div>
-    <div class="legend-item"><div class="legend-swatch swatch-2sigma"></div> &plusmn;2&sigma;</div>
-  </div>
-
-  <div id="output"></div>
-
-  <script type="module" src="ui/app.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>
