@@ -48,5 +48,5 @@ agents:
   aider:
     implement_command: "aider --yes --no-git --model {model} --message {prompt}"
     compare_command: "aider --yes --no-git --model {model} --read {path_a} --read {path_b} --message {prompt}"
-    model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
+    model: "openrouter/z-ai/glm-5"
 

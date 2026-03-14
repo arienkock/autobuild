@@ -5,6 +5,7 @@ parsing remain consistent regardless of the underlying provider.
 """
 
 import json
+import re
 import textwrap
 from pathlib import Path
 
@@ -98,11 +99,36 @@ def collect_sources(root: Path, max_bytes: int = _MAX_FILE_BYTES) -> str:
 def parse_json_response(text: str) -> dict:
     """Extract and repair the first JSON object from an LLM response.
 
-    Delegates to ``json-repair`` which handles markdown fences, single quotes,
-    trailing commas, nested braces inside string values, and many other quirks
-    produced by LLMs.
+    Tries ``json.loads`` first, then falls back to ``json-repair``.  If
+    ``json-repair`` triggers a ``RecursionError`` (a known bug in some
+    versions with certain malformed inputs), a regex-based extraction of
+    the first ``{...}`` block is attempted as a last resort.
     """
-    result = repair_json(text, return_objects=True)
-    if isinstance(result, dict):
-        return result
+    # Fast path: clean JSON straight from the model.
+    stripped = text.strip()
+    try:
+        result = json.loads(stripped)
+        if isinstance(result, dict):
+            return result
+    except json.JSONDecodeError:
+        pass
+
+    # json-repair handles markdown fences, trailing commas, single quotes, etc.
+    try:
+        result = repair_json(text, return_objects=True)
+        if isinstance(result, dict):
+            return result
+    except RecursionError:
+        pass
+
+    # Last resort: pull the first {...} block out with regex and try again.
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        try:
+            result = json.loads(match.group())
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
+            pass
+
     raise ValueError(f"Could not parse JSON object from agent response:\n{text}")
