@@ -96,7 +96,7 @@ def _compare(task: Task, a: Workspace, b: Workspace, criterion: _Criterion, llm)
         prompt = prompt.replace("{{extensibility_scenario}}", task.extensibility_scenario)
     if "{{task_description}}" in prompt:
         prompt = prompt.replace("{{task_description}}", task.description)
-    result = llm.compare(prompt, a.path, b.path, workspace=a.path)
+    result = llm.compare(prompt, a.path, b.path, workspace=a.path.parent)
     return Comparison(
         criterion=criterion.name,
         winner=result["winner"],
