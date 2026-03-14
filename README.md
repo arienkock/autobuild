@@ -16,8 +16,37 @@ Results for every task are written to `.autobuild/results/<task-id>/results.json
 
 ## Installation
 
+### Prerequisites: Python 3.11+
+
+Autobuild requires Python 3.11 or later. Check what you have:
+
 ```bash
-pip install -e .
+python3 --version
+```
+
+If you don't have 3.11+, install it via [Homebrew](https://brew.sh) (macOS) or your system's package manager:
+
+```bash
+brew install python@3.11
+```
+
+### Set up a virtual environment
+
+A virtual environment keeps Autobuild's dependencies isolated from the rest of your system. This step is optional but strongly recommended.
+
+```bash
+/usr/local/opt/python@3.11/bin/python3.11 -m venv .venv
+source .venv/bin/activate
+```
+
+> If `python3 --version` already reports 3.11+ and is on your PATH, you can use `python3 -m venv .venv` instead.
+
+Once the venv is active, your shell prompt will show `(.venv)`. All subsequent `pip` and `autobuild` commands will use the isolated environment. To deactivate it later, run `deactivate`.
+
+### Install
+
+```bash
+pip install .
 ```
 
 This installs the `autobuild` CLI entry point.
