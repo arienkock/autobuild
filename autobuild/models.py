@@ -68,6 +68,9 @@ class Config:
     default_variation_instructions: list[VariationInstruction] = None
     agents: dict[str, AgentConfig] = field(default_factory=dict)
     default_agent: Optional[str] = None
+    # Optional dedicated judge agent/model; falls back to default_agent when absent.
+    judge_agent: Optional[str] = None
+    judge_model: Optional[str] = None
 
     def __post_init__(self):
         if self.default_variation_instructions is None:

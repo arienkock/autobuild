@@ -33,6 +33,7 @@ def load_config(repo_root: Path) -> Config:
     path = repo_root / ".autobuild" / "config.yaml"
     data: dict = yaml.safe_load(path.read_text()) if path.exists() else {}
     agents_raw = data.get("agents")
+    judge_raw = data.get("judge") or {}
     return Config(
         quality_gates=data.get("quality_gates", _DEFAULT_QUALITY_GATES),
         src_dir=data.get("src_dir", _DEFAULT_SRC_DIR),
@@ -41,4 +42,6 @@ def load_config(repo_root: Path) -> Config:
         ),
         agents=_parse_agents(agents_raw),
         default_agent=data.get("default_agent"),
+        judge_agent=judge_raw.get("agent") if isinstance(judge_raw, dict) else None,
+        judge_model=judge_raw.get("model") if isinstance(judge_raw, dict) else None,
     )

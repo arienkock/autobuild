@@ -22,9 +22,22 @@ src_dir: "src"
 # - agent:  name of an agent defined under `agents` (default_agent is used when omitted)
 # - model:  model override for this variation, replacing the agent's default model
 default_variation_instructions:
-  - "Execute the task from the inside out. Start with the low level components and build up to the higher level components. You should prefer to write idealised 'internal' code before it's needed and adjust later."
-  - "Execute the task from the outside in. Write the top level functional interfaces layersfirst, then only when that's done should you implement the 'internal' code."
-  - "Write failing tests first at a functional level to sharpen your thinking, then the code. Perform a typical RED -> GREEN -> REFACTOR cycle for each test. Do NOT write multiple failing tests at once!"
+  - agent: cursor
+  - agent: aider
+    model: "openrouter/z-ai/glm-5"
+  - agent: aider
+    model: "openrouter/z-ai/glm-4.5-air:free"
+
+
+# Optional dedicated judge configuration.
+# When omitted, the default_agent is used for judging.
+# Specify agent and/or model to use a different combination for the judge role.
+# This is useful when the implementation variations experiment involves the
+# default agent and you want an independent judge.
+#
+# judge:
+#   agent: claude
+#   model: "claude-opus-4-5"
 
 
 # Quality gates run in the workspace after each implementation attempt.

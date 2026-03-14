@@ -5,6 +5,7 @@ from typing import Iterable
 
 from . import agent, judge, workspace
 from .config import load_config
+from .llm import create_judge_llm
 from .models import Config, Task, VariationInstruction
 from .task_loader import load_backlog
 
@@ -102,7 +103,7 @@ def _run_task(
             _archive(task, results, None, results_dir)
             return
 
-        verdict = judge.rank(task, survivors, llm)
+        verdict = judge.rank(task, survivors, create_judge_llm(config, llm))
         _apply_winner(verdict.winner, repo_root)
         _archive(task, results, verdict, results_dir)
         print(f"  ✓ Winner: variation-{verdict.winner.variation}")

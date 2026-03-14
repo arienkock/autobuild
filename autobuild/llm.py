@@ -45,3 +45,34 @@ def create_default_llm(config: "Config | None" = None) -> Llm:
     except FileNotFoundError as exc:
         return NotConfiguredLlm(str(exc))
 
+
+def create_judge_llm(config: "Config | None", default_llm: Llm) -> Llm:
+    """Return the LLM to use for judging.
+
+    If ``config`` specifies a ``judge_agent`` and/or ``judge_model`` those are
+    resolved against the ``agents`` map (falling back to ``default_agent`` when
+    only a model override is given).  When no judge-specific config is present
+    ``default_llm`` is returned unchanged.
+    """
+    if not config:
+        return default_llm
+
+    agent_name = config.judge_agent
+    model_override = config.judge_model
+
+    if not agent_name and not model_override:
+        return default_llm
+
+    from dataclasses import replace as _dc_replace  # noqa: PLC0415
+
+    from .cli_llm import CliLlm  # noqa: PLC0415
+
+    resolved_agent = agent_name or config.default_agent
+    if not resolved_agent or resolved_agent not in config.agents:
+        return default_llm
+
+    agent_cfg = config.agents[resolved_agent]
+    if model_override:
+        agent_cfg = _dc_replace(agent_cfg, model=model_override)
+    return CliLlm(agent_cfg)
+
