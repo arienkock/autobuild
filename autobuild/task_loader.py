@@ -3,7 +3,7 @@ from typing import List, Optional
 
 import frontmatter
 
-from .models import Task
+from .models import Task, VariationInstruction
 
 _REQUIRED = {
     "id",
@@ -12,14 +12,21 @@ _REQUIRED = {
 }
 
 
-def load(path: Path, default_variation_instructions: Optional[List[str]] = None) -> Task:
+def load(
+    path: Path,
+    default_variation_instructions: Optional[List[VariationInstruction]] = None,
+) -> Task:
     post = frontmatter.load(str(path))
     raw = dict(post.metadata)
     raw["description"] = post.content.strip()
     missing = _REQUIRED - raw.keys()
     if missing:
         raise ValueError(f"Task {path} missing fields: {missing}")
-    instructions = raw.get("variation_instructions") or default_variation_instructions or []
+    task_raw = raw.get("variation_instructions") or []
+    if task_raw:
+        instructions = [VariationInstruction.from_raw(i) for i in task_raw]
+    else:
+        instructions = list(default_variation_instructions or [])
     if len(instructions) != 3:
         raise ValueError(
             f"Task {path} must have exactly 3 variation_instructions "
@@ -30,7 +37,7 @@ def load(path: Path, default_variation_instructions: Optional[List[str]] = None)
     return Task(**data)
 
 
-def load_backlog(backlog_dir: Path, default_variation_instructions: Optional[List[str]] = None) -> List[Task]:
+def load_backlog(backlog_dir: Path, default_variation_instructions: Optional[List[VariationInstruction]] = None) -> List[Task]:
     files = sorted(backlog_dir.glob("*.md"))
     return [load(f, default_variation_instructions) for f in files]
 

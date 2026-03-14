@@ -2,7 +2,7 @@ import subprocess
 import time
 from typing import Protocol
 
-from .models import AgentResult, Task, Workspace
+from .models import AgentResult, Task, VariationInstruction, Workspace
 
 MAX_RETRIES = 3
 
@@ -24,13 +24,13 @@ def run(
     quality_gates: list[str],
 ) -> AgentResult:
     tag = f"[{workspace.variation}]"
-    instruction = _variation_instruction(task, workspace.variation)
+    vi = _variation_instruction(task, workspace.variation)
     context = ""
     cpu_start = time.process_time()
 
     for attempt in range(MAX_RETRIES):
         print(f"  {tag} attempt {attempt + 1}/{MAX_RETRIES}: implementing…", flush=True)
-        llm.implement(task, instruction, context, workspace.path / workspace.src_dir)
+        llm.implement(task, vi.prompt or "", context, workspace.path / workspace.src_dir)
         print(f"  {tag} running quality gates…", flush=True)
         gate_result = _run_gates(workspace, quality_gates)
         if gate_result.passed:
@@ -53,7 +53,7 @@ def run(
     )
 
 
-def _variation_instruction(task: Task, variation: str) -> str:
+def _variation_instruction(task: Task, variation: str) -> VariationInstruction:
     idx = {"a": 0, "b": 1, "c": 2}[variation]
     return task.variation_instructions[idx]
 

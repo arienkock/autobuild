@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from autobuild import orchestrator
-from autobuild.models import Task, Workspace
+from autobuild.models import Task, VariationInstruction, Workspace
 
 
 # ── shared fixtures ───────────────────────────────────────────────────────────
@@ -18,7 +18,11 @@ def _task(task_id: str, title: str = "A Task") -> Task:
         id=task_id,
         title=title,
         description="Do something.",
-        variation_instructions=["a", "b", "c"],
+        variation_instructions=[
+            VariationInstruction(prompt="a"),
+            VariationInstruction(prompt="b"),
+            VariationInstruction(prompt="c"),
+        ],
         extensibility_scenario="N/A",
     )
 

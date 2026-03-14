@@ -4,9 +4,11 @@ import pytest
 import yaml
 
 from autobuild.config import load_config
+from autobuild.models import VariationInstruction
 
 
-_THREE = ["instruction a", "instruction b", "instruction c"]
+_THREE_YAML = ["instruction a", "instruction b", "instruction c"]
+_THREE = [VariationInstruction(prompt=s) for s in _THREE_YAML]
 
 
 def _write_config(tmp_path, data: dict):
@@ -34,16 +36,31 @@ def test_default_variation_instructions_empty_when_no_config_file(tmp_path):
 
 
 def test_default_variation_instructions_loaded(tmp_path):
-    _write_config(tmp_path, {"default_variation_instructions": _THREE})
+    _write_config(tmp_path, {"default_variation_instructions": _THREE_YAML})
     config = load_config(tmp_path)
     assert config.default_variation_instructions == _THREE
+
+
+def test_default_variation_instructions_as_dicts(tmp_path):
+    raw = [
+        {"prompt": "inside-out"},
+        {"agent": "claude"},
+        {"model": "opus"},
+    ]
+    _write_config(tmp_path, {"default_variation_instructions": raw})
+    config = load_config(tmp_path)
+    assert config.default_variation_instructions == [
+        VariationInstruction(prompt="inside-out"),
+        VariationInstruction(agent="claude"),
+        VariationInstruction(model="opus"),
+    ]
 
 
 def test_other_fields_unaffected(tmp_path):
     _write_config(tmp_path, {
         "quality_gates": ["npm test"],
         "src_dir": "frontend",
-        "default_variation_instructions": _THREE,
+        "default_variation_instructions": _THREE_YAML,
     })
     config = load_config(tmp_path)
     assert config.quality_gates == ["npm test"]

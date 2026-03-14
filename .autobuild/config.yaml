@@ -15,6 +15,12 @@ src_dir: "src"
 # Default variation instructions used when a task file omits variation_instructions.
 # Exactly 3 entries are required (one per variation). Task-level instructions take
 # precedence over these defaults.
+#
+# Each entry is an object with at least one of: prompt, agent, model.
+# A plain string is shorthand for { prompt: "..." }.
+# - prompt: instruction text passed to the LLM for this variation
+# - agent:  name of an agent defined under `agents` (default_agent is used when omitted)
+# - model:  model override for this variation, replacing the agent's default model
 default_variation_instructions:
   - "Execute the task from the inside out. Start with the low level components and build up to the higher level components. You should prefer to write idealised 'internal' code before it's needed and adjust later."
   - "Execute the task from the outside in. Write the top level functional interfaces layersfirst, then only when that's done should you implement the 'internal' code."
@@ -32,7 +38,7 @@ quality_gates:
 # Placeholders: {prompt}, {workspace}, {model}. Other {NAME} = environment variable.
 # Use [optional args] so that part is omitted when the env var inside is unset
 # (e.g. [--api-key {CURSOR_API_KEY}] is dropped when CURSOR_API_KEY is not set).
-default_agent: aider
+default_agent: cursor
 
 agents:
   cursor:

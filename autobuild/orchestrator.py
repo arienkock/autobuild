@@ -1,10 +1,11 @@
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import replace as _dc_replace
 from pathlib import Path
 from typing import Iterable
 
 from . import agent, judge, workspace
 from .config import load_config
-from .models import Task
+from .models import Config, Task, VariationInstruction
 from .task_loader import load_backlog
 
 
@@ -35,10 +36,33 @@ def run(
                 continue
 
         print(f"\n── Task {task.id}: {task.title}")
-        _run_task(task, repo_root, results_dir, llm, config.quality_gates, config.src_dir, keep_workspaces)
+        _run_task(task, repo_root, results_dir, llm, config.quality_gates, config.src_dir, keep_workspaces, config=config)
 
         if not run_all:
             break
+
+
+_VARIATION_INDEX = {"a": 0, "b": 1, "c": 2}
+
+
+def _resolve_variation_llm(vi: VariationInstruction, config: Config, default_llm):
+    """Return the LLM appropriate for *vi*, falling back to *default_llm* when no override."""
+    agent_name = vi.agent
+    model_override = vi.model
+    if not agent_name and not model_override:
+        return default_llm
+
+    from .cli_llm import CliLlm  # noqa: PLC0415
+
+    resolved_agent = agent_name or config.default_agent
+    if resolved_agent and resolved_agent in config.agents:
+        agent_cfg = config.agents[resolved_agent]
+    else:
+        return default_llm
+
+    if model_override:
+        agent_cfg = _dc_replace(agent_cfg, model=model_override)
+    return CliLlm(agent_cfg)
 
 
 def _run_task(
@@ -49,14 +73,25 @@ def _run_task(
     quality_gates: list[str],
     src_dir: str,
     keep_workspaces: bool = False,
+    config: Config | None = None,
 ) -> None:
     with workspace.provision(task, repo_root, src_dir, keep=keep_workspaces) as workspaces:
         for ws in workspaces:
             print(f"  [{ws.variation}] workspace: {ws.path}")
-        # implement all 3 variations in parallel
+        # implement all 3 variations in parallel, each with its own resolved LLM
         with ProcessPoolExecutor(max_workers=3) as pool:
             futures = [
-                pool.submit(agent.run, task, ws, llm, quality_gates)
+                pool.submit(
+                    agent.run,
+                    task,
+                    ws,
+                    _resolve_variation_llm(
+                        task.variation_instructions[_VARIATION_INDEX[ws.variation]],
+                        config,
+                        default_llm=llm,
+                    ) if config else llm,
+                    quality_gates,
+                )
                 for ws in workspaces
             ]
             results = [f.result() for f in futures]
