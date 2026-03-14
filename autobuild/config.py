@@ -29,11 +29,18 @@ def _parse_variation_instructions(raw: Optional[List]) -> List[VariationInstruct
     return [VariationInstruction.from_raw(item) for item in raw]
 
 
+def _parse_timeout(value) -> Optional[float]:
+    if value is None:
+        return None
+    return float(value)
+
+
 def load_config(repo_root: Path) -> Config:
     path = repo_root / ".autobuild" / "config.yaml"
     data: dict = yaml.safe_load(path.read_text()) if path.exists() else {}
     agents_raw = data.get("agents")
     judge_raw = data.get("judge") or {}
+    timeouts_raw = data.get("timeouts") or {}
     return Config(
         quality_gates=data.get("quality_gates", _DEFAULT_QUALITY_GATES),
         src_dir=data.get("src_dir", _DEFAULT_SRC_DIR),
@@ -44,4 +51,6 @@ def load_config(repo_root: Path) -> Config:
         default_agent=data.get("default_agent"),
         judge_agent=judge_raw.get("agent") if isinstance(judge_raw, dict) else None,
         judge_model=judge_raw.get("model") if isinstance(judge_raw, dict) else None,
+        implementation_timeout=_parse_timeout(timeouts_raw.get("implementation") if isinstance(timeouts_raw, dict) else None),
+        retry_timeout=_parse_timeout(timeouts_raw.get("retry") if isinstance(timeouts_raw, dict) else None),
     )

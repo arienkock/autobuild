@@ -1,6 +1,6 @@
 import subprocess
 import time
-from typing import Protocol
+from typing import Optional, Protocol
 
 from .models import AgentResult, Task, VariationInstruction, Workspace
 
@@ -14,6 +14,7 @@ class LlmClient(Protocol):
         instruction: str,
         context: str,
         workspace_path,
+        timeout: Optional[float] = None,
     ) -> None: ...
 
 
@@ -22,6 +23,8 @@ def run(
     workspace: Workspace,
     llm: LlmClient,
     quality_gates: list[str],
+    implementation_timeout: Optional[float] = None,
+    retry_timeout: Optional[float] = None,
 ) -> AgentResult:
     tag = f"[{workspace.variation}]"
     vi = _variation_instruction(task, workspace.variation)
@@ -29,8 +32,15 @@ def run(
     cpu_start = time.process_time()
 
     for attempt in range(MAX_RETRIES):
-        print(f"  {tag} attempt {attempt + 1}/{MAX_RETRIES}: implementing…", flush=True)
-        llm.implement(task, vi.prompt or "", context, workspace.path / workspace.src_dir)
+        timeout = implementation_timeout if attempt == 0 else retry_timeout
+        timeout_note = f" (timeout: {timeout}s)" if timeout is not None else ""
+        print(f"  {tag} attempt {attempt + 1}/{MAX_RETRIES}: implementing…{timeout_note}", flush=True)
+        try:
+            llm.implement(task, vi.prompt or "", context, workspace.path / workspace.src_dir, timeout=timeout)
+        except TimeoutError:
+            print(f"  {tag} timed out after {timeout}s — {'retrying' if attempt < MAX_RETRIES - 1 else 'giving up'}", flush=True)
+            context = _append_failure(context, f"Implementation timed out after {timeout}s")
+            continue
         print(f"  {tag} running quality gates…", flush=True)
         gate_result = _run_gates(workspace, quality_gates)
         if gate_result.passed:

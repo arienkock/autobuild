@@ -62,6 +62,7 @@ class CliLlm:
         instruction: str,
         context: str,
         workspace_path: Path,
+        timeout: float | None = None,
     ) -> None:
         """Run the implement command template in *workspace_path*."""
         prompt = build_implement_prompt(task, instruction, context)
@@ -74,7 +75,7 @@ class CliLlm:
         if not cmd:
             raise RuntimeError("implement_command produced an empty command")
         label = workspace_path.parent.name
-        _run_with_heartbeat(cmd, label, cwd=workspace_path)
+        _run_with_heartbeat(cmd, label, cwd=workspace_path, timeout=timeout)
 
     def compare(
         self,
@@ -129,8 +130,13 @@ def _run(cmd: list[str], cwd: Path | None = None) -> str:
         ) from e
 
 
-def _run_with_heartbeat(cmd: list[str], label: str, cwd: Path | None = None) -> str:
-    """Run *cmd*, print heartbeat every few seconds, retry on failure."""
+def _run_with_heartbeat(cmd: list[str], label: str, cwd: Path | None = None, timeout: float | None = None) -> str:
+    """Run *cmd*, print heartbeat every few seconds, retry on failure.
+
+    *timeout* (seconds) limits how long a single process invocation may run.
+    When exceeded the process is killed and a TimeoutError is raised immediately
+    (no CLI-level retry, so the caller can decide what to do).
+    """
     for attempt in range(_MAX_RETRIES):
         try:
             proc = subprocess.Popen(
@@ -155,7 +161,13 @@ def _run_with_heartbeat(cmd: list[str], label: str, cwd: Path | None = None) -> 
         hb_thread = threading.Thread(target=_heartbeat, daemon=True)
         hb_thread.start()
         try:
-            stdout, _ = proc.communicate()
+            stdout, _ = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            stop_event.set()
+            hb_thread.join()
+            raise TimeoutError(f"Agent timed out after {timeout}s")
         finally:
             stop_event.set()
             hb_thread.join()

@@ -40,6 +40,15 @@ default_variation_instructions:
 #   model: "claude-opus-4-5"
 
 
+# Per-attempt timeouts for the implementation step (seconds).
+# implementation: caps the first attempt; retry: caps each subsequent attempt.
+# Omit a key (or set to null) for no limit on that step.
+#
+timeouts:
+  implementation: 360
+  retry: 180
+
+
 # Quality gates run in the workspace after each implementation attempt.
 # Each entry is a shell command; all must exit 0 for the attempt to pass.
 # Adjust these when changing language, test framework, or analysis tools.

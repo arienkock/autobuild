@@ -5,11 +5,11 @@ from typing import Dict, List
 
 from ..models import Comparison, JudgeResult, Task, Workspace
 
-_CRITERIA_DIR = Path(__file__).parent / "criteria"
+_BUILTIN_CRITERIA_DIR = Path(__file__).parent / "criteria"
 
 
-def rank(task: Task, workspaces: List[Workspace], llm) -> JudgeResult:
-    criteria = _load_criteria()
+def rank(task: Task, workspaces: List[Workspace], llm, repo_root: Path | None = None) -> JudgeResult:
+    criteria = _load_criteria(repo_root)
     all_comparisons: List[Comparison] = []
     pairs = list(combinations(workspaces, 2))
     jobs = [(a, b, criterion) for a, b in pairs for criterion in criteria]
@@ -65,9 +65,16 @@ class _Criterion:
         self.weight = weight
 
 
-def _load_criteria() -> List["_Criterion"]:
+def _load_criteria(repo_root: Path | None = None) -> List["_Criterion"]:
+    criteria_dir = (
+        repo_root / ".autobuild" / "criteria"
+        if repo_root is not None
+        else _BUILTIN_CRITERIA_DIR
+    )
+    if not criteria_dir.exists():
+        criteria_dir = _BUILTIN_CRITERIA_DIR
     criteria: List[_Criterion] = []
-    for path in sorted(_CRITERIA_DIR.glob("*.md")):
+    for path in sorted(criteria_dir.glob("*.md")):
         text = path.read_text()
         weight = _parse_weight(text)
         if weight == 0:

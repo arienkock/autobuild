@@ -71,6 +71,9 @@ class Config:
     # Optional dedicated judge agent/model; falls back to default_agent when absent.
     judge_agent: Optional[str] = None
     judge_model: Optional[str] = None
+    # Timeouts (seconds). None means no limit.
+    implementation_timeout: Optional[float] = None
+    retry_timeout: Optional[float] = None
 
     def __post_init__(self):
         if self.default_variation_instructions is None:

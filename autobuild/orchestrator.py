@@ -92,6 +92,8 @@ def _run_task(
                         default_llm=llm,
                     ) if config else llm,
                     quality_gates,
+                    config.implementation_timeout if config else None,
+                    config.retry_timeout if config else None,
                 )
                 for ws in workspaces
             ]
@@ -103,7 +105,7 @@ def _run_task(
             _archive(task, results, None, results_dir)
             return
 
-        verdict = judge.rank(task, survivors, create_judge_llm(config, llm))
+        verdict = judge.rank(task, survivors, create_judge_llm(config, llm), repo_root=repo_root)
         _apply_winner(verdict.winner, repo_root)
         _archive(task, results, verdict, results_dir)
         print(f"  ✓ Winner: variation-{verdict.winner.variation}")
