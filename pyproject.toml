@@ -25,6 +25,7 @@ autobuild = "autobuild.cli:main"
 include = ["autobuild*"]
 
 [tool.pytest.ini_options]
+testpaths = ["autobuild/tests"]
 markers = [
     "integration: tests that call the real cursor-agent CLI (require a valid Cursor session)",
 ]

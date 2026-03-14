@@ -1,0 +1,8 @@
+{
+  "name": "monte-carlo-simulation",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/distributions.test.js test/variable.test.js test/model.test.js test/simulation.test.js test/statistics.test.js test/npv-model.test.js"
+  }
+}

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monte Carlo Simulation</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1rem 2rem; }
+    section { margin-bottom: 1.5rem; }
+    label { display: inline-block; min-width: 6rem; }
+    input, select { margin: 0.25rem; }
+    .variable-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; flex-wrap: wrap; }
+    .variable-row .params { display: flex; gap: 0.25rem; align-items: center; }
+    .variable-row .params input { width: 4rem; }
+    button { margin: 0.25rem; padding: 0.35rem 0.75rem; cursor: pointer; }
+    #results { margin-top: 1rem; }
+    #results table { border-collapse: collapse; }
+    .chart-caption { margin-bottom: 0.5rem; color: #475569; }
+    #cone-chart-container { min-height: 320px; }
+    #results th, #results td { border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }
+    #results th { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>Monte Carlo Simulation</h1>
+  <section>
+    <label for="model-type">Model</label>
+    <select id="model-type">
+      <option value="sum">Sum</option>
+      <option value="npv">NPV</option>
+    </select>
+  </section>
+  <section>
+    <label for="iterations">Iterations</label>
+    <input type="number" id="iterations" value="10000" min="1" step="1000">
+  </section>
+  <section id="section-sum">
+    <h2>Variables</h2>
+    <div id="variable-list"></div>
+    <button type="button" id="add-variable">Add variable</button>
+  </section>
+  <section id="section-npv" hidden>
+    <h2>NPV inputs</h2>
+    <div class="variable-row">
+      <label for="npv-initial">Initial investment</label>
+      <input type="number" id="npv-initial" value="100000" step="1000">
+    </div>
+    <div class="variable-row">
+      <label for="npv-years">Years</label>
+      <input type="number" id="npv-years" value="10" min="1" max="50">
+    </div>
+    <p><strong>Variables (in order):</strong> discount rate (e.g. 0.05), then annual cashflow.</p>
+    <div id="npv-variable-list"></div>
+    <button type="button" id="add-npv-variable">Add variable</button>
+  </section>
+  <section>
+    <button type="button" id="run">Run simulation</button>
+  </section>
+  <section id="results" hidden>
+    <h2>Results</h2>
+    <div id="results-sum">
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+    <div id="results-npv" hidden>
+      <p class="chart-caption">Cumulative NPV over time (cone of uncertainty)</p>
+      <div id="cone-chart-container"></div>
+    </div>
+  </section>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

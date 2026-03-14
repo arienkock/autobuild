@@ -4,7 +4,7 @@
 # writes results. The orchestrator can also be driven directly via its Python
 # API if you need more control.
 
-backlog_dir: "backlog"
+backlog_dir: ".autobuild/backlog"
 results_dir: ".autobuild/results"
 
 # Subdirectory of the repo that contains the project source code.
@@ -25,8 +25,8 @@ default_variation_instructions:
   - agent: cursor
   - agent: aider
     model: "openrouter/z-ai/glm-5"
-  - agent: aider
-    model: "openrouter/z-ai/glm-4.5-air:free"
+  - agent: claude
+    model: "claude-opus-4-5"
 
 
 # Optional dedicated judge configuration.

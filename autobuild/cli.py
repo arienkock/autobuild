@@ -17,7 +17,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--backlog-dir",
         type=Path,
-        default=Path("backlog"),
+        default=Path(".autobuild/backlog"),
         help="Path to the backlog directory of task YAML files.",
     )
     parser.add_argument(

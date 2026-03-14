@@ -1,0 +1,102 @@
+{
+  "agents": [
+    {
+      "variation": "a",
+      "variation_instruction": {
+        "agent": "cursor"
+      },
+      "success": true,
+      "reason": "Passed on attempt 1",
+      "cpu_time_seconds": 0.008
+    },
+    {
+      "variation": "b",
+      "variation_instruction": {
+        "agent": "aider",
+        "model": "openrouter/z-ai/glm-5"
+      },
+      "success": true,
+      "reason": "Passed on attempt 1",
+      "cpu_time_seconds": 0.022
+    },
+    {
+      "variation": "c",
+      "variation_instruction": {
+        "agent": "claude",
+        "model": "claude-opus-4-5"
+      },
+      "success": true,
+      "reason": "Passed on attempt 1",
+      "cpu_time_seconds": 0.009
+    }
+  ],
+  "verdict": {
+    "winner": "a",
+    "reasoning": "Tournament scores:\n  a: 6.5 points\n  b: 4.0 points\n  c: 3.0 points",
+    "comparisons": [
+      {
+        "criterion": "extensibility",
+        "variation_a": "b",
+        "variation_b": "c",
+        "winner": "c",
+        "reasoning": "Implementation B (variation-c) is easier to extend for multiple models (finance, project management, etc.). (1) Extension points: B has a single generic Model with an injectable evaluator and named Variables (sampledValues as { name: value }), so new calculations are added by writing new evaluator functions and reusing Model/Simulation/Variable; A uses a concrete AdditiveModel with a fixed sum and an anonymous variable array, so each new formula type requires a new model class and naming inputs is not first-class. (2) Modify vs add: In B, new domains mean adding evaluators and optionally new stat helpers (e.g. percentile, VaR) that reuse mean/median/standardDeviation; Model, Simulation, and Variable stay unchanged. In A, new domains mean new model classes and, for domain-specific stats or named inputs, modifying or duplicating the monolithic analyzer and/or how variables are passed. (3) Resilience: B supports any formula via the evaluator contract, composable statistics for new metrics, and a Custom distribution; A\u2019s hardcoded evaluate() and single analyze() output make it brittle for different formulas and reporting needs. Thus B favors adding new code over changing existing code and has clearer, more flexible extension points."
+      },
+      {
+        "criterion": "extensibility",
+        "variation_a": "a",
+        "variation_b": "b",
+        "winner": "a",
+        "reasoning": "Implementation A exposes a single extension point: the Model constructor accepts an optional evaluator function (variables) => value. Adding a new calculation (e.g. NPV, project duration, product of inputs) is done by adding a new evaluator and passing it to Model\u2014no changes to Model, Variable, runSimulation, or statistics. Existing code stays untouched; only new code is added. Implementation B uses a concrete AdditiveModel with fixed sum logic. Each new calculation requires a new model class and changes to main.js (or another orchestrator) to choose and instantiate it, so existing code is modified whenever a model type is added. A\u2019s design is more resilient: different domains (e.g. finance with discount rate, project management with thresholds) can be handled inside their evaluators, including edge cases, without altering the core API. B would need interface or constructor changes and updated call sites for models that need extra configuration. Thus A is easier to extend for multiple models that calculate different things."
+      },
+      {
+        "criterion": "simplicity",
+        "variation_a": "b",
+        "variation_b": "c",
+        "winner": "b",
+        "reasoning": "Implementation A has less incidental complexity. It uses fewer lines of code and fewer abstractions: no Variable wrapper (distributions are used directly), a single-purpose AdditiveModel instead of a generic Model with pluggable evaluator, and a plain runSimulation function instead of a Simulation class. The analyze() function in A is one place that computes and returns all stats; B splits statistics into mean(), median(), standardDeviation(), and analyze() that composes them. In B, the Variable class and the named sampledValues map exist primarily to support the generic evaluator pattern (e.g. custom formulas by name); for the core additive Monte Carlo feature that support is incidental. Cognitive load is lower in A because the flow is direct: distributions \u2192 AdditiveModel \u2192 runSimulation \u2192 analyze, with no extra indirection or naming layer."
+      },
+      {
+        "criterion": "simplicity",
+        "variation_a": "a",
+        "variation_b": "c",
+        "winner": "a",
+        "reasoning": "A has less incidental complexity. (1) Lines and abstractions: A uses ~133 lines of core JS with distributions as plain functions and one Variable class with static factories (constant, distribution, arbitrary); B uses ~181 lines with seven distribution classes (Constant, Uniform, Normal, Triangular, Pareto, Exponential, Custom), a Variable class, and a Simulation class. (2) Cognitive load: In A the flow is direct\u2014Variable wraps a sampler, Model holds variables and an evaluator that receives the variable list, and runSimulation(iterations, model) is a single function. In B you must track six distribution types, Variable(name, distribution), Model building a name-keyed object for the evaluator, and Simulation as a stateful wrapper. (3) Support-only constructs: In B, Variable.name exists so Model.run() can pass an object to the evaluator; for the default sum evaluator the names are unused. The Simulation class only holds (model, iterations) and exposes .run(), duplicating what a function does. The barrel index.js only re-exports. A has no Variable names, no Simulation class, and distributions as functions instead of a class per type, so it avoids these extra layers."
+      },
+      {
+        "criterion": "extensibility",
+        "variation_a": "a",
+        "variation_b": "c",
+        "winner": "c",
+        "reasoning": "B (variation-c) is easier to extend. It exposes a single extension point\u2014the evaluator\u2014that receives a named map of sampled values (e.g. { revenue, cost, duration }). Adding a finance model (e.g. NPV) or a project model (e.g. critical path) is done by adding a new evaluator that reads from this map; Model, Variable, and Simulation stay unchanged and no existing code needs modification. A (variation-a) also uses an evaluator, but it passes an ordered array of variables with no names, so domain models would depend on index order and would be brittle; supporting named inputs would require changing Variable (add name), Model (build and pass a map), and call sites. B\u2019s variables already have names and the distributions are class-based with a Custom class for one-off cases, so new domains and edge cases are handled by new code (evaluators, optional keys in the map) rather than by editing core types."
+      },
+      {
+        "criterion": "simplicity",
+        "variation_a": "a",
+        "variation_b": "b",
+        "winner": "b",
+        "reasoning": "B has less incidental complexity. (1) Lines and abstractions: A uses ~283 LOC across 6 modules (app, variable, model, simulation, statistics, distributions) and introduces a Variable class that wraps sampler functions, a Model with an optional evaluator and defaultEvaluator, and separate mean/median/stdDev plus getSummary. B uses ~149 LOC across 5 modules with no Variable layer, a single AdditiveModel that sums samples, and one analyze() function; distributions are used directly via .sample(). (2) Cognitive load: In A, the core flow goes through Variable factories, Model.setVariables, defaultEvaluator, and getSummary; the Variable abstraction and the evaluator pattern add concepts (sampler, evaluator) that aren\u2019t needed for \u201csum of samples.\u201d In B, the flow is variables \u2192 AdditiveModel \u2192 runSimulation \u2192 analyze \u2192 render, with no extra indirection. (3) Support-only constructs: In A, the Variable class exists only to give a uniform interface (constant/distribution/arbitrary) that B already gets from distribution classes and Constant with .sample(); Model\u2019s evaluator and defaultEvaluator add pluggability that the app never uses. B has no such meta-layer or unused flexibility. A\u2019s dynamic UI adds essential capability (configurable variables) but also more code; the lower incidental complexity in B comes from omitting the Variable wrapper and the unused evaluator pattern while keeping the same core behavior (run simulation, show summary stats)."
+      },
+      {
+        "criterion": "faithfulness",
+        "variation_a": "a",
+        "variation_b": "b",
+        "winner": "a",
+        "reasoning": "Implementation A better satisfies the task. (1) Iterations as parameter: the spec asks for the number of iterations to be a parameter. A exposes it in both the API (runSimulation(iterations, model)) and the UI (iterations input). B accepts iterations in the API but hardcodes 10000 in main.js with no UI to change it. (2) Variables as constants or arbitrary values: the spec explicitly allows variables that are 'constants, or arbitrary values'. A provides Variable.constant() and Variable.arbitrary() (function or array of values). B has a Constant class but no notion of 'arbitrary' variables (e.g. sampling from a discrete set). (3) Reusable components: A uses a generic Model with a pluggable evaluator (defaultEvaluator sums variables; custom evaluators are possible), and the app lets users add/remove and configure variables and distributions. B uses a fixed AdditiveModel and a single hardcoded set of variables and iterations in the UI, so the core is reusable but the app is not. (4) Both correctly implement the Monte Carlo loop, model as parameter, distributions (normal, uniform, triangular, pareto), additive model, returning all results, and displaying mean, median, and +/- 1 and 2 standard deviations. Both use vanilla JS/DOM and have tests runnable via npm run test. A also uses the Node built-in test runner (node:test) with multiple test files. On balance, A is more faithful to the stated requirements and to the intent of a parameterized, reusable Monte Carlo setup with configurable variables including constants and arbitrary values."
+      },
+      {
+        "criterion": "faithfulness",
+        "variation_a": "b",
+        "variation_b": "c",
+        "winner": "b",
+        "reasoning": "Both implementations satisfy the explicit requirements: Monte Carlo core logic with iterations and model as parameters, sampleable variables (distributions, constants), a model that sums variable values, full results returned, and mean/median/\u00b11\u03c3/\u00b12\u03c3 displayed; both use vanilla JS and DOM, have npm run test, and avoid comments. A (variation-b) is more faithful to the task description and intent for these reasons: (1) Literal fit: the spec says 'for this task, it is sufficient to implement a model that simply adds up the values.' A provides only AdditiveModel that sums variables; B provides a generic Model with a pluggable evaluator and sum only as the default, which goes beyond the stated sufficiency. (2) Scope: the task lists distributions (e.g. normal, uniform, triangular, pareto) and allows constants or arbitrary values; A implements exactly those (Normal, Uniform, Triangular, Pareto, Constant) with no extra distribution types or abstraction layers. B adds Exponential, Custom(sampleFn), and a Variable wrapper class\u2014useful but not required and not specified. (3) Simplicity and intent: the description emphasizes parameterized simulation and reusable code; A achieves that with a minimal, clear surface (runSimulation(model, iterations), analyze(results), AdditiveModel, distribution classes) without extra generality. (4) No contradictions: A's Normal distribution avoids log(0) by guarding against zero from Math.random(); B's Normal does not, which is a small robustness gap. B is more flexible and structured, but faithfulness here favors the implementation that matches the letter and sufficiency of the spec without adding unrequested features, so the winner is A."
+      },
+      {
+        "criterion": "faithfulness",
+        "variation_a": "a",
+        "variation_b": "c",
+        "winner": "a",
+        "reasoning": "Implementation A is more faithful to the task. (1) Parameters: The spec says 'The number of iterations should be a parameter' and 'A model should be a parameter.' A exposes the core algorithm as runSimulation(iterations, model)\u2014both are direct function parameters. B uses a Simulation class with constructor(model, iterations), so both are still parameters but the core entry point is a class plus run(), which is less literal. (2) Variables as 'constants, or arbitrary values': The task lists variables that can be distributions, constants, or arbitrary values. A provides Variable.constant(value), Variable.distribution(sampler), and Variable.arbitrary(samplerOrValues) with first-class support for an array of discrete values or a custom sampler. B has Constant, distribution classes, and Custom(sampleFn); 'arbitrary values' is not a named concept and is only via Custom. A matches the three-way distinction in the spec more directly. (3) Sufficiency: The task says 'For this task, it is sufficient to implement a model that simply adds up the values.' A stays within that scope. B adds Exponential and a histogram; not wrong, but A adheres more to 'sufficient.' (4) Tests: Both run via npm run test. A uses Node's built-in test runner (node --test) with separate test files; B uses a custom assert harness in one script. A aligns better with standard tooling. (5) Core logic: A's simulation.js is a small, pure function that clearly embodies the Monte Carlo loop and is easy to reuse. Conclusion: A fulfills every explicit requirement, matches the intent (parameters, variable kinds, sufficient model, full results, statistics), and avoids scope creep."
+      }
+    ]
+  }
+}
