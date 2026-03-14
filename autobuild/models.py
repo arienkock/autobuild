@@ -90,6 +90,8 @@ class Comparison:
     criterion: str
     winner: str  # "A", "B", or "tie"
     reasoning: str
+    variation_a: str = ""  # actual variation label for the "A" slot (e.g. "a", "b")
+    variation_b: str = ""  # actual variation label for the "B" slot (e.g. "b", "c")
 
 
 @dataclass(frozen=True)

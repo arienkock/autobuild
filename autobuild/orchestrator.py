@@ -155,10 +155,15 @@ def _archive(task: Task, results: Iterable, verdict, results_dir: Path) -> None:
 
     out = results_dir / task.id
     out.mkdir(parents=True, exist_ok=True)
+
+    def _vi_dict(vi: VariationInstruction) -> dict:
+        return {k: v for k, v in {"prompt": vi.prompt, "agent": vi.agent, "model": vi.model}.items() if v is not None}
+
     payload: dict = {
         "agents": [
             {
                 "variation": r.workspace.variation,
+                "variation_instruction": _vi_dict(task.variation_instructions[_VARIATION_INDEX[r.workspace.variation]]),
                 "success": r.success,
                 "reason": r.reason,
                 "cpu_time_seconds": round(r.cpu_time_seconds, 3),
@@ -174,7 +179,13 @@ def _archive(task: Task, results: Iterable, verdict, results_dir: Path) -> None:
             "comparisons": [
                 {
                     "criterion": c.criterion,
-                    "winner": c.winner,
+                    "variation_a": c.variation_a,
+                    "variation_b": c.variation_b,
+                    "winner": (
+                        c.variation_a if c.winner == "A"
+                        else c.variation_b if c.winner == "B"
+                        else "tie"
+                    ),
                     "reasoning": c.reasoning,
                 }
                 for c in verdict.comparisons

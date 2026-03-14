@@ -101,6 +101,8 @@ def _compare(task: Task, a: Workspace, b: Workspace, criterion: _Criterion, llm)
         criterion=criterion.name,
         winner=result["winner"],
         reasoning=result["reasoning"],
+        variation_a=a.variation,
+        variation_b=b.variation,
     )
 
 
