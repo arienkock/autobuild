@@ -28,3 +28,26 @@ quality_gates:
   - "npm run test"
 
 
+# CLI agent to use. Set default_agent to the name of an entry under agents.
+# Placeholders: {prompt}, {workspace}, {model}. Other {NAME} = environment variable.
+# Use [optional args] so that part is omitted when the env var inside is unset
+# (e.g. [--api-key {CURSOR_API_KEY}] is dropped when CURSOR_API_KEY is not set).
+default_agent: claude
+
+agents:
+  cursor:
+    implement_command: "agent --print --trust --force [--api-key {CURSOR_API_KEY}] --workspace {workspace} --model {model} {prompt}"
+    compare_command: "agent --print --trust --mode ask [--api-key {CURSOR_API_KEY}] --workspace {workspace} --model {model} {prompt}"
+    model: "auto"
+
+  claude:
+    implement_command: "claude --print --dangerously-skip-permissions --no-session-persistence --model {model} {prompt}"
+    compare_command: "claude --print --permission-mode plan --no-session-persistence --model {model} {prompt}"
+    model: "sonnet"
+
+  # Example: aider
+  # aider:
+  #   implement_command: "aider --yes --workspace {workspace} --message {prompt}"
+  #   compare_command: "aider --yes --workspace {workspace} --message {prompt}"
+  #   model: ""
+

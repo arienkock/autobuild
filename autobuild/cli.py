@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 from . import orchestrator
+from .config import load_config
 from .llm import create_default_llm
 
 
@@ -42,7 +43,8 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     args = parser.parse_args(argv)
-    llm = create_default_llm()
+    config = load_config(args.repo_root)
+    llm = create_default_llm(config)
 
     orchestrator.run(
         repo_root=args.repo_root,

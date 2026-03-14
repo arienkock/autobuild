@@ -1,6 +1,13 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+
+@dataclass(frozen=True)
+class AgentConfig:
+    implement_command: str
+    compare_command: str
+    model: str
 
 
 @dataclass(frozen=True)
@@ -25,6 +32,8 @@ class Config:
     quality_gates: list[str]
     src_dir: str
     default_variation_instructions: list[str] = None
+    agents: dict[str, AgentConfig] = field(default_factory=dict)
+    default_agent: Optional[str] = None
 
     def __post_init__(self):
         if self.default_variation_instructions is None:
