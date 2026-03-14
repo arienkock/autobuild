@@ -27,9 +27,11 @@ def _interpolate(
     workspace: Path,
     prompt: str,
     model: str,
+    **extra: Any,
 ) -> list[str]:
     """Two-pass: strip optional [...] groups with missing env vars, then substitute placeholders."""
-    builtins = {"workspace": str(workspace), "prompt": prompt, "model": model}
+    builtins = {"workspace": str(workspace), "prompt": prompt, "model": model,
+                **{k: str(v) for k, v in extra.items()}}
 
     def _resolve(key: str) -> str:
         if key in builtins:
@@ -89,6 +91,8 @@ class CliLlm:
             workspace=work,
             prompt=full_prompt,
             model=self._config.model,
+            path_a=path_a,
+            path_b=path_b,
         )
         if not cmd:
             raise RuntimeError("compare_command produced an empty command")
