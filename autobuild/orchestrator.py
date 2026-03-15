@@ -26,10 +26,12 @@ def run(
     ``force_task_id`` to build a specific task regardless of prior results.
     """
     config = load_config(repo_root)
-    for task in load_backlog(backlog_dir, config.default_variation_instructions):
+    matched = False
+    for task in load_backlog(backlog_dir, config.default_variation_instructions, agents=config.agents):
         if force_task_id is not None:
             if task.id != force_task_id:
                 continue
+            matched = True
         else:
             result_file = results_dir / task.id / "results.json"
             if result_file.exists():
@@ -41,6 +43,9 @@ def run(
 
         if not run_all:
             break
+
+    if force_task_id is not None and not matched:
+        raise ValueError(f"No task with id '{force_task_id}' found in backlog")
 
 
 _VARIATION_INDEX = {"a": 0, "b": 1, "c": 2}

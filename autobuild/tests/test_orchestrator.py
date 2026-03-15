@@ -140,10 +140,9 @@ def test_force_task_id_ignores_existing_results(tmp_path, fake_config):
     assert built_task.id == "002-beta"
 
 
-def test_force_task_id_unknown_runs_nothing(tmp_path, fake_config):
-    mock = _run(tmp_path, TASKS, force_task_id="999-missing", fake_config=fake_config)
-
-    mock.assert_not_called()
+def test_force_task_id_unknown_raises(tmp_path, fake_config):
+    with pytest.raises(ValueError, match="999-missing"):
+        _run(tmp_path, TASKS, force_task_id="999-missing", fake_config=fake_config)
 
 
 # ── _apply_winner copies to src_dir, never to repo root ───────────────────────

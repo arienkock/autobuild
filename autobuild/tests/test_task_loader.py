@@ -139,3 +139,59 @@ def test_load_backlog_task_overrides_default(tmp_path):
     tasks = load_backlog(tmp_path, default_variation_instructions=_OTHER_THREE)
     assert tasks[0].variation_instructions == _THREE
     assert tasks[1].variation_instructions == _OTHER_THREE
+
+
+# ── load_backlog: directory existence ────────────────────────────────────────
+
+
+def test_load_backlog_raises_when_dir_does_not_exist(tmp_path):
+    missing = tmp_path / "no-such-dir"
+    with pytest.raises(FileNotFoundError, match="no-such-dir"):
+        load_backlog(missing, default_variation_instructions=_THREE)
+
+
+# ── load_backlog: empty backlog warning ──────────────────────────────────────
+
+
+def test_load_backlog_warns_when_empty(tmp_path, recwarn):
+    load_backlog(tmp_path, default_variation_instructions=_THREE)
+    messages = [str(w.message) for w in recwarn.list]
+    assert any("no task files" in m.lower() or "empty" in m.lower() for m in messages)
+
+
+# ── load_backlog: duplicate task IDs ────────────────────────────────────────
+
+
+def test_load_backlog_raises_on_duplicate_ids(tmp_path):
+    _write_task(tmp_path / "001.md", {**_BASE, "id": "dup"})
+    _write_task(tmp_path / "002.md", {**_BASE, "id": "dup"})
+    with pytest.raises(ValueError, match="dup"):
+        load_backlog(tmp_path, default_variation_instructions=_THREE)
+
+
+# ── load: empty description warning ─────────────────────────────────────────
+
+
+def test_load_warns_when_description_is_empty(tmp_path, recwarn):
+    f = tmp_path / "task.md"
+    _write_task(f, {**_BASE, "description": ""})
+    load(f, default_variation_instructions=_THREE)
+    messages = [str(w.message) for w in recwarn.list]
+    assert any("description" in m.lower() for m in messages)
+
+
+# ── load_backlog: VariationInstruction.agent not in agents ───────────────────
+
+
+def test_load_backlog_raises_when_task_agent_not_in_agents(tmp_path):
+    _write_task(tmp_path / "001.md", {
+        **_BASE,
+        "variation_instructions": [
+            {"agent": "known"},
+            {"agent": "unknown"},
+            {"prompt": "ok"},
+        ],
+    })
+    agents = {"known": object()}
+    with pytest.raises(ValueError, match="unknown"):
+        load_backlog(tmp_path, agents=agents)
