@@ -24,6 +24,7 @@ _KNOWN_KEYS = {
 
 
 _GATES_DIR_NAME = "gates"
+_BUILTIN_GATES_DIR = Path(__file__).parent / _GATES_DIR_NAME
 
 
 def _parse_prompt_from_md(text: str) -> str:
@@ -33,13 +34,18 @@ def _parse_prompt_from_md(text: str) -> str:
 
 
 def _load_llm_gates(names: List[str], repo_root: Path) -> List[LlmGate]:
-    gates_dir = repo_root / ".autobuild" / _GATES_DIR_NAME
+    project_gates_dir = repo_root / ".autobuild" / _GATES_DIR_NAME
     gates: List[LlmGate] = []
     for name in names:
-        path = gates_dir / f"{name}.md"
-        if not path.exists():
+        project_path = project_gates_dir / f"{name}.md"
+        builtin_path = _BUILTIN_GATES_DIR / f"{name}.md"
+        if project_path.exists():
+            path = project_path
+        elif builtin_path.exists():
+            path = builtin_path
+        else:
             warnings.warn(
-                f"llm_quality_gates: gate file '{path}' not found — skipping '{name}'",
+                f"llm_quality_gates: gate '{name}' not found in '{project_gates_dir}' or built-in gates — skipping",
                 stacklevel=5,
             )
             continue

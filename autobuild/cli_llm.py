@@ -126,12 +126,12 @@ def _agent_not_found_hint(prog: str) -> str:
 
 
 def _run(cmd: list[str], cwd: Path | None = None) -> str:
-    """Run *cmd*, return stdout. Retries on failure up to _MAX_RETRIES times."""
+    """Run *cmd*, return combined stdout+stderr. Retries on failure up to _MAX_RETRIES times."""
     try:
         for attempt in range(_MAX_RETRIES):
             result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
             if result.returncode == 0:
-                return result.stdout
+                return "\n".join(filter(None, [result.stdout, result.stderr]))
             output = result.stderr or result.stdout
             if attempt < _MAX_RETRIES - 1:
                 time.sleep(1 + attempt)

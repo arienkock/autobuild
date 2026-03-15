@@ -25,6 +25,9 @@ autobuild = "autobuild.cli:main"
 [tool.setuptools.packages.find]
 include = ["autobuild*"]
 
+[tool.setuptools.package-data]
+autobuild = ["gates/*.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["autobuild/tests"]
 markers = [

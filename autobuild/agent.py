@@ -114,7 +114,14 @@ def _run_llm_gates(
     outcomes: list[dict] = []
     for gate in gates:
         prompt = gate.prompt.replace("{{task_description}}", task.description)
-        result = gate_llm.evaluate(prompt, workspace.path / workspace.src_dir)
+        try:
+            result = gate_llm.evaluate(prompt, workspace.path / workspace.src_dir)
+        except (ValueError, RuntimeError) as exc:
+            outcome = {"gate": gate.name, "grade": "ERROR", "reasoning": str(exc)}
+            outcomes.append(outcome)
+            print(f"  {tag} gate '{gate.name}': ERROR ✗", flush=True)
+            print(f"  {tag}   → {str(exc).splitlines()[0][:120]}", flush=True)
+            return _GateResult(passed=False, output=f"LLM quality gate '{gate.name}' errored:\n{exc}", outcomes=outcomes)
         grade = str(result.get("grade", "")).upper()
         reasoning = result.get("reasoning", "")
         outcome = {"gate": gate.name, "grade": grade, "reasoning": reasoning}
