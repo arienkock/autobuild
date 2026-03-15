@@ -4,8 +4,8 @@
 # writes results. The orchestrator can also be driven directly via its Python
 # API if you need more control.
 
-backlog_dir: ".autobuild/backlog"
-results_dir: ".autobuild/results"
+backlog-dir: ".autobuild/backlog"
+results-dir: ".autobuild/results"
 
 # Subdirectory of the repo that contains the project source code.
 # Only this directory is copied into each workspace; the winner is merged back here.

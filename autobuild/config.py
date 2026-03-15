@@ -17,8 +17,8 @@ _KNOWN_KEYS = {
     "default_agent",
     "judge",
     "timeouts",
-    "backlog_dir",
-    "results_dir",
+    "backlog-dir",
+    "results-dir",
 }
 
 
