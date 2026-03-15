@@ -18,12 +18,15 @@ def run(
     run_all: bool = False,
     force_task_id: str | None = None,
     keep_workspaces: bool = False,
+    auto_commit: bool = False,
 ) -> None:
     """Run the autobuild loop over tasks in the backlog.
 
     By default stops after building the first unbuilt task.  Pass
     ``run_all=True`` to process every unbuilt task in one invocation, or
     ``force_task_id`` to build a specific task regardless of prior results.
+    Pass ``auto_commit=True`` (requires ``run_all=True``) to stage and commit
+    all repo changes after each successful task.
     """
     config = load_config(repo_root)
     matched = False
@@ -39,7 +42,10 @@ def run(
                 continue
 
         print(f"\n── Task {task.id}: {task.title}")
-        _run_task(task, repo_root, results_dir, llm, config.quality_gates, config.src_dir, keep_workspaces, config=config)
+        winner_info = _run_task(task, repo_root, results_dir, llm, config.quality_gates, config.src_dir, keep_workspaces, config=config)
+
+        if auto_commit and winner_info is not None:
+            _git_commit(task, winner_info, repo_root)
 
         if not run_all:
             break
@@ -80,7 +86,8 @@ def _run_task(
     src_dir: str,
     keep_workspaces: bool = False,
     config: Config | None = None,
-) -> None:
+) -> tuple[str, str] | None:
+    """Run a single task and return ``(winning_variation, instruction_prompt)`` or ``None`` on total failure."""
     with workspace.provision(task, repo_root, src_dir, keep=keep_workspaces) as workspaces:
         for ws in workspaces:
             print(f"  [{ws.variation}] workspace: {ws.path}")
@@ -108,13 +115,25 @@ def _run_task(
         if not survivors:
             print("  ✗ All variations failed — skipping")
             _archive(task, results, None, results_dir)
-            return
+            return None
 
         verdict = judge.rank(task, survivors, create_judge_llm(config, llm), repo_root=repo_root)
         _apply_winner(verdict.winner, repo_root)
         _archive(task, results, verdict, results_dir)
         print(f"  ✓ Winner: variation-{verdict.winner.variation}")
         print(f"  {verdict.reasoning}")
+        winning_vi = task.variation_instructions[_VARIATION_INDEX[verdict.winner.variation]]
+        return verdict.winner.variation, winning_vi.prompt or ""
+
+
+def _git_commit(task: Task, winner_info: tuple[str, str], repo_root: Path) -> None:
+    import subprocess
+
+    variation, instruction = winner_info
+    message = f"autobuild: task {task.id} [{variation}] - {instruction}" if instruction else f"autobuild: task {task.id} [{variation}]"
+    subprocess.run(["git", "add", "-A"], cwd=repo_root, check=True)
+    subprocess.run(["git", "commit", "-m", message], cwd=repo_root, check=True)
+    print(f"  ↳ Committed: {message}")
 
 
 def _apply_winner(winner, repo_root: Path) -> None:

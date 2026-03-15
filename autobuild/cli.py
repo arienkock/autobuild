@@ -41,8 +41,17 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Keep temporary workspaces after the run for post-run inspection.",
     )
+    parser.add_argument(
+        "--auto-commit",
+        action="store_true",
+        help="Stage and commit all changes after each successful task (requires --all).",
+    )
 
     args = parser.parse_args(argv)
+
+    if args.auto_commit and not args.all:
+        parser.error("--auto-commit requires --all")
+
     config = load_config(args.repo_root)
     llm = create_default_llm(config)
 
@@ -54,6 +63,7 @@ def main(argv: list[str] | None = None) -> None:
         run_all=args.all,
         force_task_id=args.task,
         keep_workspaces=args.keep_workspaces,
+        auto_commit=args.auto_commit,
     )
 
 
