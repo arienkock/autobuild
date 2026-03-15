@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import { runSimulation } from "../js/simulation.js";
-import { sumModel } from "../js/model.js";
+import { sumModel, npvModel } from "../js/model.js";
 import { constant } from "../js/variable.js";
 import { uniform } from "../js/distributions.js";
 import { sampled } from "../js/variable.js";
@@ -31,5 +31,20 @@ describe("runSimulation", () => {
     const model = sumModel([constant(1)]);
     const results = runSimulation(model, 5);
     assert.deepStrictEqual(results, [1, 1, 1, 1, 1]);
+  });
+
+  it("with npvModel returns array of timelines", () => {
+    const model = npvModel({
+      initialInvestment: constant(100),
+      discountRate: constant(0.1),
+      cashflows: [constant(50)],
+    });
+    const results = runSimulation(model, 3);
+    assert.strictEqual(results.length, 3);
+    results.forEach((timeline) => {
+      assert.ok(Array.isArray(timeline));
+      assert.strictEqual(timeline.length, 2);
+      assert.strictEqual(timeline[0], -100);
+    });
   });
 });
