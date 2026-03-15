@@ -1,21 +1,35 @@
-import test from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert";
-import { Variable } from "../js/variable.js";
-import { Model } from "../js/model.js";
 import { runSimulation } from "../js/simulation.js";
+import { sumModel } from "../js/model.js";
+import { constant } from "../js/variable.js";
+import { uniform } from "../js/distributions.js";
+import { sampled } from "../js/variable.js";
 
-test("runSimulation returns array of length iterations", () => {
-  const model = new Model().addVariable(Variable.constant(1));
-  const results = runSimulation(100, model);
-  assert.strictEqual(results.length, 100);
-  assert.strictEqual(results.every((r) => r === 1), true);
-});
+describe("runSimulation", () => {
+  it("returns array of length iterations", () => {
+    const model = sumModel([constant(1)]);
+    const results = runSimulation(model, 100);
+    assert.strictEqual(results.length, 100);
+  });
 
-test("runSimulation returns all results for analysis", () => {
-  const model = new Model()
-    .addVariable(Variable.constant(1))
-    .addVariable(Variable.constant(2));
-  const results = runSimulation(50, model);
-  assert.strictEqual(results.length, 50);
-  assert.strictEqual(results.every((r) => r === 3), true);
+  it("with constant model all results are equal", () => {
+    const model = sumModel([constant(3), constant(5)]);
+    const results = runSimulation(model, 50);
+    assert.ok(results.every((r) => r === 8));
+  });
+
+  it("with sampled variable results vary", () => {
+    const model = sumModel([constant(0), sampled(uniform(0, 10))]);
+    const results = runSimulation(model, 200);
+    const unique = new Set(results);
+    assert.ok(unique.size > 1);
+    assert.ok(results.every((r) => r >= 0 && r <= 10));
+  });
+
+  it("returns all results for analysis", () => {
+    const model = sumModel([constant(1)]);
+    const results = runSimulation(model, 5);
+    assert.deepStrictEqual(results, [1, 1, 1, 1, 1]);
+  });
 });

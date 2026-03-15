@@ -1,33 +1,38 @@
-import test from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert";
 import { uniform, normal, triangular, pareto } from "../js/distributions.js";
 
-test("uniform returns values in [a, b]", () => {
-  const sample = uniform(10, 20);
-  for (let i = 0; i < 100; i++) {
-    const v = sample();
-    assert.ok(v >= 10 && v <= 20);
-  }
+describe("uniform", () => {
+  it("returns value within [min, max]", () => {
+    for (let i = 0; i < 100; i++) {
+      const v = uniform(0, 10)();
+      assert.ok(v >= 0 && v <= 10);
+    }
+  });
 });
 
-test("normal returns numbers", () => {
-  const sample = normal(5, 2);
-  for (let i = 0; i < 100; i++) {
-    assert.strictEqual(typeof sample(), "number");
-  }
+describe("normal", () => {
+  it("returns values centered near mean", () => {
+    const samples = Array.from({ length: 1000 }, () => normal(5, 1)());
+    const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
+    assert.ok(mean > 4.5 && mean < 5.5);
+  });
 });
 
-test("triangular returns values in [a, b]", () => {
-  const sample = triangular(0, 10, 5);
-  for (let i = 0; i < 100; i++) {
-    const v = sample();
-    assert.ok(v >= 0 && v <= 10);
-  }
+describe("triangular", () => {
+  it("returns value within [min, max]", () => {
+    for (let i = 0; i < 100; i++) {
+      const v = triangular(0, 5, 10)();
+      assert.ok(v >= 0 && v <= 10);
+    }
+  });
 });
 
-test("pareto returns values >= xm", () => {
-  const sample = pareto(2, 1);
-  for (let i = 0; i < 100; i++) {
-    assert.ok(sample() >= 1);
-  }
+describe("pareto", () => {
+  it("returns value >= xm", () => {
+    for (let i = 0; i < 100; i++) {
+      const v = pareto(1, 2)();
+      assert.ok(v >= 1);
+    }
+  });
 });

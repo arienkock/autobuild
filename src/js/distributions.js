@@ -1,11 +1,9 @@
-function uniform(a, b) {
-  return function () {
-    return a + (b - a) * Math.random();
-  };
+export function uniform(min, max) {
+  return () => min + Math.random() * (max - min);
 }
 
-function normal(mean, stdDev) {
-  return function () {
+export function normal(mean, stdDev) {
+  return () => {
     const u1 = Math.random();
     const u2 = Math.random();
     const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
@@ -13,21 +11,15 @@ function normal(mean, stdDev) {
   };
 }
 
-function triangular(a, b, c) {
-  return function () {
+export function triangular(min, mode, max) {
+  return () => {
     const u = Math.random();
-    const F = (c - a) / (b - a);
-    if (u < F) {
-      return a + Math.sqrt(u * (b - a) * (c - a));
-    }
-    return b - Math.sqrt((1 - u) * (b - a) * (b - c));
+    const c = (mode - min) / (max - min);
+    if (u <= c) return min + Math.sqrt(u * (max - min) * (mode - min));
+    return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
   };
 }
 
-function pareto(alpha, xm) {
-  return function () {
-    return xm / Math.pow(Math.random(), 1 / alpha);
-  };
+export function pareto(xm, alpha) {
+  return () => xm / Math.pow(Math.random(), 1 / alpha);
 }
-
-export { uniform, normal, triangular, pareto };

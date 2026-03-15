@@ -1,23 +1,22 @@
-import test from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert";
-import { Variable } from "../js/variable.js";
-import { Model } from "../js/model.js";
+import { sumModel } from "../js/model.js";
+import { constant } from "../js/variable.js";
 
-test("default model sums variable samples", () => {
-  const model = new Model();
-  model.addVariable(Variable.constant(1)).addVariable(Variable.constant(2));
-  assert.strictEqual(model.evaluate(), 3);
-  assert.strictEqual(model.evaluate(), 3);
-});
+describe("sumModel", () => {
+  it("evaluate returns sum of variable samples", () => {
+    const model = sumModel([constant(3), constant(5)]);
+    assert.strictEqual(model.evaluate(), 8);
+    assert.strictEqual(model.evaluate(), 8);
+  });
 
-test("model with setVariables", () => {
-  const model = new Model();
-  model.setVariables([Variable.constant(5), Variable.constant(3)]);
-  assert.strictEqual(model.evaluate(), 8);
-});
+  it("evaluate with single variable returns that value", () => {
+    const model = sumModel([constant(100)]);
+    assert.strictEqual(model.evaluate(), 100);
+  });
 
-test("custom evaluator", () => {
-  const model = new Model((vars) => vars.reduce((p, v) => p * v.sample(), 1));
-  model.addVariable(Variable.constant(2)).addVariable(Variable.constant(3));
-  assert.strictEqual(model.evaluate(), 6);
+  it("evaluate with empty variables returns 0", () => {
+    const model = sumModel([]);
+    assert.strictEqual(model.evaluate(), 0);
+  });
 });
