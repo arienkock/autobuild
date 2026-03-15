@@ -86,8 +86,8 @@ def _run_task(
     src_dir: str,
     keep_workspaces: bool = False,
     config: Config | None = None,
-) -> tuple[str, str] | None:
-    """Run a single task and return ``(winning_variation, instruction_prompt)`` or ``None`` on total failure."""
+) -> tuple[str, VariationInstruction] | None:
+    """Run a single task and return ``(winning_variation, winning_vi)`` or ``None`` on total failure."""
     with workspace.provision(task, repo_root, src_dir, keep=keep_workspaces) as workspaces:
         for ws in workspaces:
             print(f"  [{ws.variation}] workspace: {ws.path}")
@@ -127,17 +127,25 @@ def _run_task(
         print(f"  ✓ Winner: variation-{verdict.winner.variation}")
         print(f"  {verdict.reasoning}")
         winning_vi = task.variation_instructions[_VARIATION_INDEX[verdict.winner.variation]]
-        return verdict.winner.variation, winning_vi.prompt or ""
+        return verdict.winner.variation, winning_vi
 
 
-def _git_commit(task: Task, winner_info: tuple[str, str], repo_root: Path) -> None:
+def _git_commit(task: Task, winner_info: tuple[str, VariationInstruction], repo_root: Path) -> None:
     import subprocess
 
-    variation, instruction = winner_info
-    message = f"autobuild: task {task.id} [{variation}] - {instruction}" if instruction else f"autobuild: task {task.id} [{variation}]"
+    variation, vi = winner_info
+    subject = f"{task.id} [{variation}]"
+    body_parts = []
+    if vi.prompt:
+        body_parts.append(f"prompt: {vi.prompt}")
+    if vi.agent:
+        body_parts.append(f"agent: {vi.agent}")
+    if vi.model:
+        body_parts.append(f"model: {vi.model}")
+    message = subject + ("\n\n" + "\n".join(body_parts) if body_parts else "")
     subprocess.run(["git", "add", "-A"], cwd=repo_root, check=True)
     subprocess.run(["git", "commit", "-m", message], cwd=repo_root, check=True)
-    print(f"  ↳ Committed: {message}")
+    print(f"  ↳ Committed: {subject}")
 
 
 def _apply_winner(winner, repo_root: Path) -> None:
