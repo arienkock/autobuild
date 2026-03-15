@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import AgentConfig, Task
-from .prompts import build_compare_prompt, build_implement_prompt, parse_json_response
+from .prompts import build_compare_prompt, build_evaluate_prompt, build_implement_prompt, parse_json_response
 
 _OPTIONAL_RE = re.compile(r"\[([^\]]*)\]")
 _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
@@ -98,6 +98,24 @@ class CliLlm:
         if not cmd:
             raise RuntimeError("compare_command produced an empty command")
         output = _run(cmd, cwd=work)
+        return parse_json_response(output)
+
+    def evaluate(self, prompt: str, workspace_path: Path) -> dict[str, Any]:
+        """Run the compare command template against a single workspace and return parsed JSON.
+
+        Reuses compare_command so no extra agent config is needed.
+        Expects the agent to respond with {"grade": "PASS" | "FAIL", "reasoning": "..."}.
+        """
+        full_prompt = build_evaluate_prompt(prompt, workspace_path)
+        cmd = _interpolate(
+            self._config.compare_command,
+            workspace=workspace_path,
+            prompt=full_prompt,
+            model=self._config.model,
+        )
+        if not cmd:
+            raise RuntimeError("compare_command produced an empty command")
+        output = _run(cmd, cwd=workspace_path)
         return parse_json_response(output)
 
 

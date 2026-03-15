@@ -62,6 +62,12 @@ class Workspace:
 
 
 @dataclass(frozen=True)
+class LlmGate:
+    name: str
+    prompt: str  # with {{task_description}} placeholder, substituted at runtime
+
+
+@dataclass(frozen=True)
 class Config:
     quality_gates: list[str]
     src_dir: str
@@ -74,6 +80,7 @@ class Config:
     # Timeouts (seconds). None means no limit.
     implementation_timeout: Optional[float] = None
     retry_timeout: Optional[float] = None
+    llm_quality_gates: list[LlmGate] = field(default_factory=list)
 
     def __post_init__(self):
         if self.default_variation_instructions is None:
@@ -86,6 +93,7 @@ class AgentResult:
     workspace: Workspace
     reason: str  # failure cause or completion summary
     cpu_time_seconds: float = 0.0
+    llm_gate_results: list = field(default_factory=list)  # list of {gate, grade, reasoning}
 
 
 @dataclass(frozen=True)

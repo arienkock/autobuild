@@ -2,8 +2,7 @@
 
 The ``Llm`` protocol defines the two methods the rest of the system calls.
 ``create_default_llm(config)`` returns a ``CliLlm`` when config defines
-agents and default_agent, otherwise a ``CursorLlm`` if ``cursor-agent`` is
-available, else ``NotConfiguredLlm``.
+agents and default_agent, otherwise ``NotConfiguredLlm``.
 """
 
 from pathlib import Path
@@ -16,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class Llm(Protocol):
-    def implement(self, task: Task, instruction: str, context: str, workspace_path: Path) -> None: ...
+    def implement(self, task: Task, instruction: str, context: str, workspace_path: Path, timeout: float | None = None) -> None: ...
 
     def compare(self, prompt: str, path_a: Path, path_b: Path) -> dict: ...
 
@@ -27,7 +26,7 @@ class NotConfiguredLlm:
     def __init__(self, reason: str | None = None) -> None:
         self._reason = reason or "No LLM has been configured for Autobuild."
 
-    def implement(self, task: Task, instruction: str, context: str, workspace_path: Path) -> None:
+    def implement(self, task: Task, instruction: str, context: str, workspace_path: Path, timeout: float | None = None) -> None:
         raise RuntimeError(self._reason)
 
     def compare(self, prompt: str, path_a: Path, path_b: Path) -> dict:
@@ -35,15 +34,11 @@ class NotConfiguredLlm:
 
 
 def create_default_llm(config: "Config | None" = None) -> Llm:
-    """Return a ``CliLlm`` for config.default_agent when configured, else ``CursorLlm`` or stub."""
+    """Return a ``CliLlm`` for config.default_agent when configured, else a stub."""
     if config and config.agents and config.default_agent and config.default_agent in config.agents:
         from .cli_llm import CliLlm  # noqa: PLC0415
         return CliLlm(config.agents[config.default_agent])
-    try:
-        from .cursor_llm import CursorLlm  # noqa: PLC0415
-        return CursorLlm()
-    except FileNotFoundError as exc:
-        return NotConfiguredLlm(str(exc))
+    return NotConfiguredLlm()
 
 
 def create_judge_llm(config: "Config | None", default_llm: Llm) -> Llm:

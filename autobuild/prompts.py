@@ -42,6 +42,23 @@ def build_implement_prompt(task: Task, instruction: str, context: str) -> str:
     return "\n".join(parts)
 
 
+def build_evaluate_prompt(gate_prompt: str, workspace_path: Path) -> str:
+    """Return the prompt used to ask an LLM to evaluate a single implementation.
+
+    The agent is expected to read the workspace files itself and respond with
+    {"grade": "PASS" | "FAIL", "reasoning": "..."}.
+    """
+    return textwrap.dedent(f"""\
+        {gate_prompt}
+
+        ## Implementation
+
+        Path: {workspace_path}
+
+        Respond with JSON only: {{"grade": "PASS" | "FAIL", "reasoning": "..."}}
+    """)
+
+
 def build_compare_prompt(
     criterion_prompt: str,
     path_a: Path,

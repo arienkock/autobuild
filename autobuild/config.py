@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import yaml
 
-from .models import AgentConfig, Config, VariationInstruction
+from .models import AgentConfig, Config, LlmGate, VariationInstruction
 
 _DEFAULT_QUALITY_GATES = ["python -m pytest --tb=short -q"]
 _DEFAULT_SRC_DIR = "src"
@@ -12,6 +12,7 @@ _DEFAULT_SRC_DIR = "src"
 _KNOWN_KEYS = {
     "src_dir",
     "quality_gates",
+    "llm_quality_gates",
     "default_variation_instructions",
     "agents",
     "default_agent",
@@ -20,6 +21,31 @@ _KNOWN_KEYS = {
     "backlog-dir",
     "results-dir",
 }
+
+
+_GATES_DIR_NAME = "gates"
+
+
+def _parse_prompt_from_md(text: str) -> str:
+    """Strip YAML frontmatter and return the body of a markdown gate/criterion file."""
+    parts = text.split("---", 2)
+    return parts[2].strip() if len(parts) >= 3 else text.strip()
+
+
+def _load_llm_gates(names: List[str], repo_root: Path) -> List[LlmGate]:
+    gates_dir = repo_root / ".autobuild" / _GATES_DIR_NAME
+    gates: List[LlmGate] = []
+    for name in names:
+        path = gates_dir / f"{name}.md"
+        if not path.exists():
+            warnings.warn(
+                f"llm_quality_gates: gate file '{path}' not found — skipping '{name}'",
+                stacklevel=5,
+            )
+            continue
+        prompt = _parse_prompt_from_md(path.read_text())
+        gates.append(LlmGate(name=name, prompt=prompt))
+    return gates
 
 
 def _parse_agents(raw: Optional[dict]) -> Dict[str, AgentConfig]:
@@ -116,6 +142,7 @@ def load_config(repo_root: Path) -> Config:
     agents_raw = data.get("agents")
     judge_raw = data.get("judge") or {}
     timeouts_raw = data.get("timeouts") or {}
+    llm_gates_names: List[str] = data.get("llm_quality_gates") or []
     config = Config(
         quality_gates=data.get("quality_gates", _DEFAULT_QUALITY_GATES),
         src_dir=data.get("src_dir", _DEFAULT_SRC_DIR),
@@ -128,6 +155,7 @@ def load_config(repo_root: Path) -> Config:
         judge_model=judge_raw.get("model") if isinstance(judge_raw, dict) else None,
         implementation_timeout=_parse_timeout(timeouts_raw.get("implementation") if isinstance(timeouts_raw, dict) else None),
         retry_timeout=_parse_timeout(timeouts_raw.get("retry") if isinstance(timeouts_raw, dict) else None),
+        llm_quality_gates=_load_llm_gates(llm_gates_names, repo_root),
     )
     _validate_config(config, repo_root, data)
     return config

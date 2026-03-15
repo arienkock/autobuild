@@ -60,6 +60,12 @@ timeouts:
 quality_gates:
   - "npm run test"
 
+# LLM quality gates: single-workspace evaluations run after shell quality gates pass.
+# Each name maps to a .autobuild/gates/<name>.md file with a PASS/FAIL prompt.
+# On FAIL, the reasoning is fed back to the LLM as context for the next retry.
+llm_quality_gates:
+  - faithfulness
+
 
 # CLI agent to use. Set default_agent to the name of an entry under agents.
 # Placeholders: {prompt}, {workspace}, {model}. Other {NAME} = environment variable.

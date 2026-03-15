@@ -1,9 +1,7 @@
 ---
-weight: 0
 ---
 
-Given two implementations of the same feature (A and B), which is more faithful
-to the task description and the intent behind it?
+Is the following implementation faithful to the task description and its intent?
 
 The task description is:
 
@@ -16,4 +14,4 @@ Consider:
 - Whether any important constraints or goals from the description are missing or
   contradicted
 
-Respond with JSON only: {"winner": "A" | "B" | "tie", "reasoning": "..."}
+Respond with JSON only: {"grade": "PASS" | "FAIL", "reasoning": "..."}

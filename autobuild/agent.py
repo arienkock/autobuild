@@ -1,8 +1,9 @@
 import subprocess
 import time
+from pathlib import Path
 from typing import Optional, Protocol
 
-from .models import AgentResult, Task, VariationInstruction, Workspace
+from .models import AgentResult, LlmGate, Task, VariationInstruction, Workspace
 
 MAX_RETRIES = 3
 
@@ -18,11 +19,17 @@ class LlmClient(Protocol):
     ) -> None: ...
 
 
+class EvaluateLlm(Protocol):
+    def evaluate(self, prompt: str, workspace_path: Path) -> dict: ...
+
+
 def run(
     task: Task,
     workspace: Workspace,
     llm: LlmClient,
     quality_gates: list[str],
+    llm_quality_gates: list[LlmGate] | None = None,
+    gate_llm: EvaluateLlm | None = None,
     implementation_timeout: Optional[float] = None,
     retry_timeout: Optional[float] = None,
 ) -> AgentResult:
@@ -43,6 +50,9 @@ def run(
             continue
         print(f"  {tag} running quality gates…", flush=True)
         gate_result = _run_gates(workspace, quality_gates)
+        if gate_result.passed and llm_quality_gates and gate_llm is not None:
+            print(f"  {tag} running LLM quality gates…", flush=True)
+            gate_result = _run_llm_gates(task, workspace, llm_quality_gates, gate_llm, tag)
         if gate_result.passed:
             print(f"  {tag} gates passed ✓", flush=True)
             return AgentResult(
@@ -50,6 +60,7 @@ def run(
                 workspace=workspace,
                 reason=f"Passed on attempt {attempt + 1}",
                 cpu_time_seconds=time.process_time() - cpu_start,
+                llm_gate_results=gate_result.outcomes,
             )
         print(f"  {tag} gates failed — retrying", flush=True)
         context = _append_failure(context, gate_result.output)
@@ -73,9 +84,10 @@ def _append_failure(context: str, gate_output: str) -> str:
 
 
 class _GateResult:
-    def __init__(self, passed: bool, output: str) -> None:
+    def __init__(self, passed: bool, output: str, outcomes: list | None = None) -> None:
         self.passed = passed
         self.output = output
+        self.outcomes: list[dict] = outcomes or []
 
 
 def _run_gates(workspace: Workspace, quality_gates: list[str]) -> _GateResult:
@@ -90,4 +102,30 @@ def _run_gates(workspace: Workspace, quality_gates: list[str]) -> _GateResult:
         if result.returncode != 0:
             return _GateResult(passed=False, output=result.stdout + result.stderr)
     return _GateResult(passed=True, output="")
+
+
+def _run_llm_gates(
+    task: Task,
+    workspace: Workspace,
+    gates: list[LlmGate],
+    gate_llm: "EvaluateLlm",
+    tag: str = "",
+) -> _GateResult:
+    outcomes: list[dict] = []
+    for gate in gates:
+        prompt = gate.prompt.replace("{{task_description}}", task.description)
+        result = gate_llm.evaluate(prompt, workspace.path / workspace.src_dir)
+        grade = str(result.get("grade", "")).upper()
+        reasoning = result.get("reasoning", "")
+        outcome = {"gate": gate.name, "grade": grade, "reasoning": reasoning}
+        outcomes.append(outcome)
+        label = "PASS ✓" if grade == "PASS" else f"FAIL ✗"
+        print(f"  {tag} gate '{gate.name}': {label}", flush=True)
+        if grade != "PASS" and reasoning:
+            first_line = reasoning.splitlines()[0][:120]
+            print(f"  {tag}   → {first_line}", flush=True)
+        if grade != "PASS":
+            output = f"LLM quality gate '{gate.name}' FAILED:\n{reasoning}"
+            return _GateResult(passed=False, output=output, outcomes=outcomes)
+    return _GateResult(passed=True, output="", outcomes=outcomes)
 

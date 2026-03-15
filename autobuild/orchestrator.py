@@ -92,6 +92,8 @@ def _run_task(
         for ws in workspaces:
             print(f"  [{ws.variation}] workspace: {ws.path}")
         # implement all variations in parallel, each with its own resolved LLM
+        gate_llm = create_judge_llm(config, llm)
+        llm_quality_gates = config.llm_quality_gates if config else []
         with ProcessPoolExecutor(max_workers=len(workspaces)) as pool:
             futures = [
                 pool.submit(
@@ -104,6 +106,8 @@ def _run_task(
                         default_llm=llm,
                     ) if config else llm,
                     quality_gates,
+                    llm_quality_gates,
+                    gate_llm,
                     config.implementation_timeout if config else None,
                     config.retry_timeout if config else None,
                 )
@@ -193,6 +197,7 @@ def _archive(task: Task, results: Iterable, verdict, results_dir: Path) -> None:
                 "success": r.success,
                 "reason": r.reason,
                 "cpu_time_seconds": round(r.cpu_time_seconds, 3),
+                "llm_gate_results": r.llm_gate_results,
             }
             for r in results
         ],

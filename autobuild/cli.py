@@ -17,14 +17,14 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--backlog-dir",
         type=Path,
-        default=Path(".autobuild/backlog"),
-        help="Path to the backlog directory of task YAML files.",
+        default=None,
+        help="Path to the backlog directory of task YAML files (default: <repo-root>/.autobuild/backlog).",
     )
     parser.add_argument(
         "--results-dir",
         type=Path,
-        default=Path(".autobuild") / "results",
-        help="Directory where per-task results will be written.",
+        default=None,
+        help="Directory where per-task results will be written (default: <repo-root>/.autobuild/results).",
     )
     parser.add_argument(
         "--all",
@@ -51,6 +51,11 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.auto_commit and not args.all:
         parser.error("--auto-commit requires --all")
+
+    if args.backlog_dir is None:
+        args.backlog_dir = args.repo_root / ".autobuild" / "backlog"
+    if args.results_dir is None:
+        args.results_dir = args.repo_root / ".autobuild" / "results"
 
     config = load_config(args.repo_root)
     llm = create_default_llm(config)
