@@ -129,7 +129,7 @@ def _run(cmd: list[str], cwd: Path | None = None) -> str:
     """Run *cmd*, return combined stdout+stderr. Retries on failure up to _MAX_RETRIES times."""
     try:
         for attempt in range(_MAX_RETRIES):
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+            result = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, cwd=cwd)
             if result.returncode == 0:
                 return "\n".join(filter(None, [result.stdout, result.stderr]))
             output = result.stderr or result.stdout
@@ -158,7 +158,7 @@ def _run_with_heartbeat(cmd: list[str], label: str, cwd: Path | None = None, tim
     for attempt in range(_MAX_RETRIES):
         try:
             proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=cwd
+                cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=cwd
             )
         except FileNotFoundError as e:
             prog = cmd[0] if cmd else "?"
