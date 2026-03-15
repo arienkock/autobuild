@@ -26,7 +26,7 @@ autobuild = "autobuild.cli:main"
 include = ["autobuild*"]
 
 [tool.setuptools.package-data]
-autobuild = ["gates/*.md", "judge/criteria/*.md"]
+autobuild = ["gates/*.md", "judge/criteria/*.md", "template/config.yaml", "template/backlog/*.md", "template/gates/*.md", "template/criteria/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["autobuild/tests"]
