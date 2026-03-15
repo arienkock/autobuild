@@ -9,7 +9,6 @@ from .models import Task, VariationInstruction
 _REQUIRED = {
     "id",
     "title",
-    "extensibility_scenario",
 }
 
 

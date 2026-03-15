@@ -100,6 +100,12 @@ def _parse_prompt(text: str) -> str:
 def _compare(task: Task, a: Workspace, b: Workspace, criterion: _Criterion, llm) -> Comparison:
     prompt = criterion.prompt
     if "{{extensibility_scenario}}" in prompt:
+        if task.extensibility_scenario is None:
+            raise ValueError(
+                f"Criterion '{criterion.name}' requires extensibility_scenario, "
+                "but the task does not define one. "
+                "Add extensibility_scenario to the task or set the criterion weight to 0."
+            )
         prompt = prompt.replace("{{extensibility_scenario}}", task.extensibility_scenario)
     if "{{task_description}}" in prompt:
         prompt = prompt.replace("{{task_description}}", task.description)

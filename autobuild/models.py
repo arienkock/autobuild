@@ -50,7 +50,7 @@ class Task:
     title: str
     description: str
     variation_instructions: list[VariationInstruction]
-    extensibility_scenario: str
+    extensibility_scenario: Optional[str] = None
 
 
 @dataclass(frozen=True)

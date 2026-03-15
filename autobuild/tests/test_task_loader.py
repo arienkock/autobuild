@@ -99,6 +99,25 @@ def test_variation_instruction_requires_at_least_one_field(tmp_path):
         load(f)
 
 
+# ── extensibility_scenario is optional ───────────────────────────────────────
+
+
+def test_extensibility_scenario_optional(tmp_path):
+    """Tasks without extensibility_scenario should load without error."""
+    base_no_ext = {k: v for k, v in _BASE.items() if k != "extensibility_scenario"}
+    f = tmp_path / "task.md"
+    _write_task(f, {**base_no_ext, "variation_instructions": ["only one"]})
+    task = load(f)
+    assert task.extensibility_scenario is None
+
+
+def test_extensibility_scenario_present_when_provided(tmp_path):
+    f = tmp_path / "task.md"
+    _write_task(f, {**_BASE, "variation_instructions": ["only one"]})
+    task = load(f)
+    assert task.extensibility_scenario == "E"
+
+
 # ── validation errors ─────────────────────────────────────────────────────────
 
 
