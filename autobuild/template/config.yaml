@@ -73,7 +73,7 @@ llm_quality_gates:
 # Placeholders: {prompt}, {workspace}, {model}. Other {NAME} = environment variable.
 # Use [optional args] so that part is omitted when the env var inside is unset
 # (e.g. [--api-key {CURSOR_API_KEY}] is dropped when CURSOR_API_KEY is not set).
-default_agent: cursor
+default_agent: claude
 
 agents:
   cursor:

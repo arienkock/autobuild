@@ -21,7 +21,7 @@ brew install python@3.11
 **pip** — comes with Python. Verify:
 
 ```bash
-pip3 --version
+pip3.11 --version
 ```
 
 ---
@@ -31,10 +31,10 @@ pip3 --version
 ```bash
 git clone https://github.com/your-org/autobuild.git
 cd autobuild
-pip3 install .
+pip3.11 install .
 ```
 
-This installs the `autobuild` command on your PATH.
+This installs the `autobuild` command on your PATH. 
 
 ---
 
