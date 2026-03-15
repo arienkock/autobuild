@@ -77,8 +77,8 @@ default_agent: cursor
 
 agents:
   cursor:
-    implement_command: "agent --print --trust --force [--api-key {CURSOR_API_KEY}] --workspace {workspace} --model {model} {prompt}"
-    compare_command: "agent --print --trust --mode ask [--api-key {CURSOR_API_KEY}] --workspace {workspace} --model {model} {prompt}"
+    implement_command: "agent --print --trust --force --approve-mcps [--api-key {CURSOR_API_KEY}] --workspace {workspace} --model {model} {prompt}"
+    compare_command: "agent --print --trust --mode ask --approve-mcps [--api-key {CURSOR_API_KEY}] --workspace {workspace} --model {model} {prompt}"
     model: "auto"
 
   claude:
