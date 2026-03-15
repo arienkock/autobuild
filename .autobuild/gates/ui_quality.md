@@ -1,7 +1,7 @@
 ---
 ---
 
-Perform visual quality assurance on the implemented UI by launching the app and inspecting it in a browser.
+Perform visual quality assurance on the implemented UI by launching the app and inspecting it in a browser. Use the browser and take screenshots as you interact, so you can visually inspect the UI in different states.
 
 Steps:
 1. Start the development server for the workspace (e.g. `npm run dev` or equivalent) in the background.
