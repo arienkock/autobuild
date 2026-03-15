@@ -65,6 +65,8 @@ quality_gates:
 # On FAIL, the reasoning is fed back to the LLM as context for the next retry.
 llm_quality_gates:
   - faithfulness
+  - testing_quality
+  - ui_quality
 
 
 # CLI agent to use. Set default_agent to the name of an entry under agents.
