@@ -91,8 +91,8 @@ def _run_task(
     with workspace.provision(task, repo_root, src_dir, keep=keep_workspaces) as workspaces:
         for ws in workspaces:
             print(f"  [{ws.variation}] workspace: {ws.path}")
-        # implement all 3 variations in parallel, each with its own resolved LLM
-        with ProcessPoolExecutor(max_workers=3) as pool:
+        # implement all variations in parallel, each with its own resolved LLM
+        with ProcessPoolExecutor(max_workers=len(workspaces)) as pool:
             futures = [
                 pool.submit(
                     agent.run,

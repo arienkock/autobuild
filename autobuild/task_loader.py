@@ -38,9 +38,9 @@ def load(
                     )
     else:
         instructions = list(default_variation_instructions or [])
-    if len(instructions) != 3:
+    if not (1 <= len(instructions) <= 3):
         raise ValueError(
-            f"Task {path} must have exactly 3 variation_instructions "
+            f"Task {path} must have 1 to 3 variation_instructions "
             "(set them on the task or via default_variation_instructions in config.yaml)",
         )
     raw["variation_instructions"] = instructions

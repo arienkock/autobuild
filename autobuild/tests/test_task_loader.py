@@ -111,9 +111,23 @@ def test_error_when_no_instructions_anywhere(tmp_path):
 
 def test_error_when_wrong_count_in_task(tmp_path):
     f = tmp_path / "task.md"
-    _write_task(f, {**_BASE, "variation_instructions": ["only one"]})
-    with pytest.raises(ValueError, match="exactly 3"):
+    _write_task(f, {**_BASE, "variation_instructions": ["a", "b", "c", "d"]})
+    with pytest.raises(ValueError, match="1 to 3"):
         load(f)
+
+
+def test_one_variation_instruction_is_valid(tmp_path):
+    f = tmp_path / "task.md"
+    _write_task(f, {**_BASE, "variation_instructions": ["only one"]})
+    task = load(f)
+    assert task.variation_instructions == [_vi("only one")]
+
+
+def test_two_variation_instructions_are_valid(tmp_path):
+    f = tmp_path / "task.md"
+    _write_task(f, {**_BASE, "variation_instructions": ["first", "second"]})
+    task = load(f)
+    assert task.variation_instructions == [_vi("first"), _vi("second")]
 
 
 def test_error_hints_at_config_when_no_instructions(tmp_path):

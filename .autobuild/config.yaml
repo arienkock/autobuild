@@ -13,7 +13,7 @@ src_dir: "src"
 
 
 # Default variation instructions used when a task file omits variation_instructions.
-# Exactly 3 entries are required (one per variation). Task-level instructions take
+# 1 to 3 entries are supported (one per variation). Task-level instructions take
 # precedence over these defaults.
 #
 # Each entry is an object with at least one of: prompt, agent, model.

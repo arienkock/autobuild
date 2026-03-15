@@ -6,7 +6,7 @@ from typing import Iterable, List
 
 from .models import Task, Workspace
 
-_VARIATIONS: Iterable[str] = ("a", "b", "c")
+_ALL_VARIATIONS: tuple[str, ...] = ("a", "b", "c")
 
 # Minimal git identity for the throwaway initial commit.
 _GIT_ENV_ARGS = ["-c", "user.email=autobuild", "-c", "user.name=autobuild"]
@@ -26,7 +26,7 @@ def provision(
     tmp_root: Path = Path("/tmp/autobuild"),
     keep: bool = False,
 ) -> List[Workspace]:
-    """Yield three isolated workspaces for a task and clean them up on exit.
+    """Yield isolated workspaces (one per variation instruction) for a task and clean them up on exit.
 
     Each workspace contains only *src_dir* from *repo_root*, placed at the
     same relative path inside a fresh git repository.  The initial commit
@@ -41,7 +41,7 @@ def provision(
     base.mkdir(parents=True, exist_ok=True)
     workspaces: List[Workspace] = []
     try:
-        for v in _VARIATIONS:
+        for v in _ALL_VARIATIONS[: len(task.variation_instructions)]:
             dest = base / f"variation-{v}"
             dest.mkdir(parents=True, exist_ok=True)
             shutil.copytree(repo_root / src_dir, dest / src_dir, dirs_exist_ok=True)

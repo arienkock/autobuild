@@ -4,7 +4,7 @@ Autobuild automates feature implementation by running multiple AI agents in para
 
 For each task in your backlog, Autobuild:
 
-1. Spins up three isolated workspaces, each containing a copy of your source directory.
+1. Spins up 1–3 isolated workspaces, each containing a copy of your source directory.
 2. Runs a separate AI agent in each workspace, optionally with different agents, models, or prompts per variation.
 3. Verifies each result against your quality gates (e.g. test suites, linters).
 4. Runs a tournament-style judge that scores surviving variations against each other on your chosen criteria.
@@ -100,7 +100,7 @@ Be specific about constraints, stack, and acceptance criteria.
 
 **Optional front-matter field — `variation_instructions`:**
 
-Override which agent, model, or additional prompt is used for each of the three variations. If omitted, the `default_variation_instructions` from `config.yaml` are used.
+Override which agent, model, or additional prompt is used for each variation (1 to 3). If omitted, the `default_variation_instructions` from `config.yaml` are used.
 
 ```yaml
 variation_instructions:
@@ -195,7 +195,7 @@ default_agent: cursor
 
 ### Default variation instructions
 
-Applied to every task whose file does not specify its own `variation_instructions`. Exactly three entries are required.
+Applied to every task whose file does not specify its own `variation_instructions`. Between one and three entries are supported.
 
 ```yaml
 default_variation_instructions:
