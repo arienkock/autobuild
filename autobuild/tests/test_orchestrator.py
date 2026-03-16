@@ -297,7 +297,7 @@ def test_crashed_worker_does_not_abort_surviving_variations(tmp_path):
         patch("autobuild.orchestrator.workspace.provision") as mock_provision,
         patch("autobuild.orchestrator.judge.rank", mock_rank),
         patch("autobuild.orchestrator._apply_winner"),
-        patch("autobuild.orchestrator._archive"),
+        patch("autobuild.orchestrator._write_results"),
         patch("autobuild.orchestrator.create_judge_llm", return_value=MagicMock()),
     ):
         mock_provision.return_value.__enter__ = MagicMock(return_value=[ws_a, ws_b, ws_c])
@@ -330,7 +330,7 @@ def test_all_workers_crashing_returns_none(tmp_path):
     with (
         patch("autobuild.orchestrator.ProcessPoolExecutor", return_value=mock_pool),
         patch("autobuild.orchestrator.workspace.provision") as mock_provision,
-        patch("autobuild.orchestrator._archive"),
+        patch("autobuild.orchestrator._write_results"),
         patch("autobuild.orchestrator.create_judge_llm", return_value=MagicMock()),
     ):
         mock_provision.return_value.__enter__ = MagicMock(return_value=[ws_a, ws_b, ws_c])
