@@ -22,7 +22,7 @@ The result: you describe what you want, Autobuild builds it, checks it, and comm
 
 ```bash
 # 1. Install
-pip3.11 install git+https://github.com/your-org/autobuild.git
+pip3.11 install git+https://github.com/arienkock/autobuild.git
 
 # 2. Initialize in your repository
 cd /path/to/your-repo

@@ -27,13 +27,13 @@ pip3.11 --version
 If you're happy to install Autobuild into your system or user Python environment, this is the fastest path:
 
 ```bash
-pip3.11 install git+https://github.com/your-org/autobuild.git
+pip3.11 install git+https://github.com/arienkock/autobuild.git
 ```
 
 Or, if you've cloned the repository:
 
 ```bash
-git clone https://github.com/your-org/autobuild.git
+git clone https://github.com/arienkock/autobuild.git
 cd autobuild
 pip3.11 install .
 ```
@@ -64,7 +64,7 @@ Your shell prompt will show `(.venv)` when the environment is active.
 ### Install Autobuild into the venv
 
 ```bash
-pip install git+https://github.com/your-org/autobuild.git
+pip install git+https://github.com/arienkock/autobuild.git
 ```
 
 Or from a local clone:
