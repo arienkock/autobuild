@@ -1,5 +1,6 @@
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Protocol
 
@@ -111,28 +112,36 @@ def _run_llm_gates(
     gate_llm: "EvaluateLlm",
     tag: str = "",
 ) -> _GateResult:
-    outcomes: list[dict] = []
-    for gate in gates:
+    def _run_one(gate: LlmGate) -> tuple[LlmGate, dict]:
         prompt = gate.prompt.replace("{{task_description}}", task.description)
         try:
             result = gate_llm.evaluate(prompt, workspace.path / workspace.src_dir)
         except (ValueError, RuntimeError) as exc:
-            outcome = {"gate": gate.name, "grade": "ERROR", "reasoning": str(exc)}
+            return gate, {"gate": gate.name, "grade": "ERROR", "reasoning": str(exc)}
+        return gate, {
+            "gate": gate.name,
+            "grade": str(result.get("grade", "")).upper(),
+            "reasoning": result.get("reasoning", ""),
+        }
+
+    outcomes: list[dict] = []
+    failures: list[str] = []
+
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(_run_one, gate): gate for gate in gates}
+        for future in as_completed(futures):
+            gate, outcome = future.result()
+            grade, reasoning = outcome["grade"], outcome["reasoning"]
             outcomes.append(outcome)
-            print(f"  {tag} gate '{gate.name}': ERROR ✗", flush=True)
-            print(f"  {tag}   → {str(exc).splitlines()[0][:120]}", flush=True)
-            return _GateResult(passed=False, output=f"LLM quality gate '{gate.name}' errored:\n{exc}", outcomes=outcomes)
-        grade = str(result.get("grade", "")).upper()
-        reasoning = result.get("reasoning", "")
-        outcome = {"gate": gate.name, "grade": grade, "reasoning": reasoning}
-        outcomes.append(outcome)
-        label = "PASS ✓" if grade == "PASS" else f"FAIL ✗"
-        print(f"  {tag} gate '{gate.name}': {label}", flush=True)
-        if grade != "PASS" and reasoning:
-            first_line = reasoning.splitlines()[0][:120]
-            print(f"  {tag}   → {first_line}", flush=True)
-        if grade != "PASS":
-            output = f"LLM quality gate '{gate.name}' FAILED:\n{reasoning}"
-            return _GateResult(passed=False, output=output, outcomes=outcomes)
+            label = "PASS ✓" if grade == "PASS" else "FAIL ✗" if grade == "FAIL" else "ERROR ✗"
+            print(f"  {tag} gate '{gate.name}': {label}", flush=True)
+            if grade != "PASS" and reasoning:
+                print(f"  {tag}   → {reasoning.splitlines()[0][:120]}", flush=True)
+            if grade != "PASS":
+                verb = "errored" if grade == "ERROR" else "FAILED"
+                failures.append(f"LLM quality gate '{gate.name}' {verb}:\n{reasoning}")
+
+    if failures:
+        return _GateResult(passed=False, output="\n\n".join(failures), outcomes=outcomes)
     return _GateResult(passed=True, output="", outcomes=outcomes)
 
