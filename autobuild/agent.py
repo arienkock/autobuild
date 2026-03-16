@@ -49,6 +49,10 @@ def run(
             print(f"  {tag} timed out after {timeout}s — {'retrying' if attempt < MAX_RETRIES - 1 else 'giving up'}", flush=True)
             context = _append_failure(context, f"Implementation timed out after {timeout}s")
             continue
+        except Exception as exc:
+            print(f"  {tag} implement failed: {exc} — {'retrying' if attempt < MAX_RETRIES - 1 else 'giving up'}", flush=True)
+            context = _append_failure(context, str(exc))
+            continue
         print(f"  {tag} running quality gates…", flush=True)
         gate_result = _run_gates(workspace, quality_gates)
         if gate_result.passed and llm_quality_gates and gate_llm is not None:
@@ -116,7 +120,7 @@ def _run_llm_gates(
         prompt = gate.prompt.replace("{{task_description}}", task.description)
         try:
             result = gate_llm.evaluate(prompt, workspace.path / workspace.src_dir)
-        except (ValueError, RuntimeError) as exc:
+        except Exception as exc:
             return gate, {"gate": gate.name, "grade": "ERROR", "reasoning": str(exc)}
         return gate, {
             "gate": gate.name,

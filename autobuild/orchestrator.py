@@ -6,7 +6,7 @@ from typing import Iterable
 from . import agent, judge, workspace
 from .config import load_config
 from .llm import create_judge_llm
-from .models import Config, Task, VariationInstruction
+from .models import AgentResult, Config, Task, VariationInstruction
 from .task_loader import load_backlog
 
 
@@ -113,7 +113,13 @@ def _run_task(
                 )
                 for ws in workspaces
             ]
-            results = [f.result() for f in futures]
+            results = []
+            for f, ws in zip(futures, workspaces):
+                try:
+                    results.append(f.result())
+                except Exception as exc:
+                    print(f"  [{ws.variation}] worker crashed: {exc}", flush=True)
+                    results.append(AgentResult(success=False, workspace=ws, reason=repr(exc)))
 
         survivors = [r.workspace for r in results if r.success]
         if not survivors:

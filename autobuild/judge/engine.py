@@ -35,7 +35,11 @@ def rank(task: Task, workspaces: List[Workspace], llm, repo_root: Path | None = 
                 f"  [{step}/{total}] {criterion.name}: {a.variation} vs {b.variation}…",
                 flush=True,
             )
-            comparison = future.result()
+            try:
+                comparison = future.result()
+            except Exception as exc:
+                print(f"    → comparison failed (skipping): {exc}", flush=True)
+                continue
             all_comparisons.append(comparison)
             winner_label = (
                 a.variation if comparison.winner == "A"

@@ -2,13 +2,14 @@
 
 import json
 import subprocess
+from concurrent.futures import Future
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from autobuild import orchestrator
-from autobuild.models import Task, VariationInstruction, Workspace
+from autobuild.models import AgentResult, Task, VariationInstruction, Workspace
 
 
 # ── shared fixtures ───────────────────────────────────────────────────────────
@@ -250,3 +251,93 @@ def test_apply_winner_works_when_repo_root_is_a_git_repo(tmp_path):
 
     assert (repo_root / "src" / "app.js").exists(), \
         "Winner files must be copied even when repo_root is a git repo"
+
+
+# ── _run_task: worker crash recovery (Gap 2) ──────────────────────────────────
+
+
+def _make_future(result=None, exception=None) -> Future:
+    f: Future = Future()
+    if exception is not None:
+        f.set_exception(exception)
+    else:
+        f.set_result(result)
+    return f
+
+
+def test_crashed_worker_does_not_abort_surviving_variations(tmp_path):
+    """A worker process that raises must produce AgentResult(success=False) without
+    aborting the other workers' results — the task should still find a winner.
+
+    Previously, [f.result() for f in futures] would stop at the first exception,
+    discarding all remaining results.
+    """
+    task = _task("001-alpha")
+    ws_a = Workspace(task_id="001-alpha", variation="a", path=tmp_path / "a", src_dir="src")
+    ws_b = Workspace(task_id="001-alpha", variation="b", path=tmp_path / "b", src_dir="src")
+    ws_c = Workspace(task_id="001-alpha", variation="c", path=tmp_path / "c", src_dir="src")
+
+    good_result = AgentResult(success=True, workspace=ws_b, reason="passed")
+    fail_result = AgentResult(success=False, workspace=ws_c, reason="gates failed")
+
+    mock_pool = MagicMock()
+    mock_pool.__enter__ = MagicMock(return_value=mock_pool)
+    mock_pool.__exit__ = MagicMock(return_value=False)
+    mock_pool.submit.side_effect = [
+        _make_future(exception=RuntimeError("worker process crashed")),
+        _make_future(result=good_result),
+        _make_future(result=fail_result),
+    ]
+
+    mock_rank = MagicMock()
+    mock_rank.return_value = MagicMock(winner=ws_b, reasoning="b wins", comparisons=[])
+
+    with (
+        patch("autobuild.orchestrator.ProcessPoolExecutor", return_value=mock_pool),
+        patch("autobuild.orchestrator.workspace.provision") as mock_provision,
+        patch("autobuild.orchestrator.judge.rank", mock_rank),
+        patch("autobuild.orchestrator._apply_winner"),
+        patch("autobuild.orchestrator._archive"),
+        patch("autobuild.orchestrator.create_judge_llm", return_value=MagicMock()),
+    ):
+        mock_provision.return_value.__enter__ = MagicMock(return_value=[ws_a, ws_b, ws_c])
+        mock_provision.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = orchestrator._run_task(
+            task, tmp_path, tmp_path / "results", MagicMock(), [], "src"
+        )
+
+    assert result is not None, "Task must produce a winner despite one crashed worker"
+    assert result[0] == "b"
+
+
+def test_all_workers_crashing_returns_none(tmp_path):
+    """When every worker crashes, _run_task must return None gracefully (no winner)."""
+    task = _task("001-alpha")
+    ws_a = Workspace(task_id="001-alpha", variation="a", path=tmp_path / "a", src_dir="src")
+    ws_b = Workspace(task_id="001-alpha", variation="b", path=tmp_path / "b", src_dir="src")
+    ws_c = Workspace(task_id="001-alpha", variation="c", path=tmp_path / "c", src_dir="src")
+
+    mock_pool = MagicMock()
+    mock_pool.__enter__ = MagicMock(return_value=mock_pool)
+    mock_pool.__exit__ = MagicMock(return_value=False)
+    mock_pool.submit.side_effect = [
+        _make_future(exception=RuntimeError("crash a")),
+        _make_future(exception=RuntimeError("crash b")),
+        _make_future(exception=RuntimeError("crash c")),
+    ]
+
+    with (
+        patch("autobuild.orchestrator.ProcessPoolExecutor", return_value=mock_pool),
+        patch("autobuild.orchestrator.workspace.provision") as mock_provision,
+        patch("autobuild.orchestrator._archive"),
+        patch("autobuild.orchestrator.create_judge_llm", return_value=MagicMock()),
+    ):
+        mock_provision.return_value.__enter__ = MagicMock(return_value=[ws_a, ws_b, ws_c])
+        mock_provision.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = orchestrator._run_task(
+            task, tmp_path, tmp_path / "results", MagicMock(), [], "src"
+        )
+
+    assert result is None

@@ -80,11 +80,15 @@ def _ensure_gitignore(path: Path) -> None:
 
 def _init_git(path: Path) -> None:
     """Initialise a throw-away git repo and commit the seed state."""
-    subprocess.run(["git", *_GIT_ENV_ARGS, "init"], cwd=path, check=True, capture_output=True)
-    subprocess.run(["git", *_GIT_ENV_ARGS, "add", "."], cwd=path, check=True, capture_output=True)
-    subprocess.run(
-        ["git", *_GIT_ENV_ARGS, "commit", "--allow-empty", "-m", "seed"],
-        cwd=path,
-        check=True,
-        capture_output=True,
-    )
+    try:
+        subprocess.run(["git", *_GIT_ENV_ARGS, "init"], cwd=path, check=True, capture_output=True)
+        subprocess.run(["git", *_GIT_ENV_ARGS, "add", "."], cwd=path, check=True, capture_output=True)
+        subprocess.run(
+            ["git", *_GIT_ENV_ARGS, "commit", "--allow-empty", "-m", "seed"],
+            cwd=path,
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or b"").decode() if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+        raise RuntimeError(f"git init failed in {path}: {stderr.strip()}") from exc
