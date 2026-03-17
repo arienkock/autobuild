@@ -10,6 +10,7 @@ import pytest
 
 from autobuild import orchestrator
 from autobuild.models import AgentResult, Task, VariationInstruction, Workspace
+from autobuild.workspace import ProvisionCtx
 
 
 # ── shared fixtures ───────────────────────────────────────────────────────────
@@ -61,11 +62,11 @@ def _run(tmp_path: Path, tasks, *, run_all=False, force_task_id=None, fake_confi
     return mock_run_task
 
 
-def _make_results(results_dir: Path, task_id: str) -> None:
-    """Write a dummy results.json so the task looks already built."""
+def _make_results(results_dir: Path, task_id: str, status: str = "complete") -> None:
+    """Write a dummy results.json so the task looks already built (or failed)."""
     out = results_dir / task_id
     out.mkdir(parents=True, exist_ok=True)
-    (out / "results.json").write_text(json.dumps({"agents": [], "verdict": None}))
+    (out / "results.json").write_text(json.dumps({"status": status, "agents": [], "verdict": None}))
 
 
 # ── stop-after-one (default) ──────────────────────────────────────────────────
@@ -300,7 +301,8 @@ def test_crashed_worker_does_not_abort_surviving_variations(tmp_path):
         patch("autobuild.orchestrator._write_results"),
         patch("autobuild.orchestrator.create_judge_llm", return_value=MagicMock()),
     ):
-        mock_provision.return_value.__enter__ = MagicMock(return_value=[ws_a, ws_b, ws_c])
+        mock_ctx = ProvisionCtx(workspaces=[ws_a, ws_b, ws_c], keep=False)
+        mock_provision.return_value.__enter__ = MagicMock(return_value=mock_ctx)
         mock_provision.return_value.__exit__ = MagicMock(return_value=False)
 
         result = orchestrator._run_task(
@@ -333,7 +335,8 @@ def test_all_workers_crashing_returns_none(tmp_path):
         patch("autobuild.orchestrator._write_results"),
         patch("autobuild.orchestrator.create_judge_llm", return_value=MagicMock()),
     ):
-        mock_provision.return_value.__enter__ = MagicMock(return_value=[ws_a, ws_b, ws_c])
+        mock_ctx = ProvisionCtx(workspaces=[ws_a, ws_b, ws_c], keep=False)
+        mock_provision.return_value.__enter__ = MagicMock(return_value=mock_ctx)
         mock_provision.return_value.__exit__ = MagicMock(return_value=False)
 
         result = orchestrator._run_task(
@@ -341,3 +344,70 @@ def test_all_workers_crashing_returns_none(tmp_path):
         )
 
     assert result is None
+
+
+# ── failed-task retry behaviour ───────────────────────────────────────────────
+
+
+def test_failed_task_is_not_skipped_on_next_run(tmp_path, fake_config):
+    """A task whose results.json has status='failed' must be re-run, not skipped."""
+    _make_results(tmp_path / "results", "001-alpha", status="failed")
+
+    mock = _run(tmp_path, TASKS, run_all=True, fake_config=fake_config)
+
+    built_ids = [call[0][0].id for call in mock.call_args_list]
+    assert "001-alpha" in built_ids, "Failed task must be retried"
+
+
+def test_complete_task_is_skipped_failed_task_is_not(tmp_path, fake_config):
+    """status='complete' skips; status='failed' does not."""
+    _make_results(tmp_path / "results", "001-alpha", status="complete")
+    _make_results(tmp_path / "results", "002-beta", status="failed")
+
+    mock = _run(tmp_path, TASKS, run_all=True, fake_config=fake_config)
+
+    built_ids = [call[0][0].id for call in mock.call_args_list]
+    assert "001-alpha" not in built_ids, "Completed task must be skipped"
+    assert "002-beta" in built_ids, "Failed task must be retried"
+    assert "003-gamma" in built_ids, "Unbuilt task must be run"
+
+
+def test_all_workers_crashing_sets_ctx_keep_and_writes_failed_status(tmp_path):
+    """Total failure must mark ctx.keep=True and write status='failed' so the
+    workspace is preserved and the task is re-queued on the next run."""
+    task = _task("001-alpha")
+    ws_a = Workspace(task_id="001-alpha", variation="a", path=tmp_path / "a", src_dir="src")
+    ws_b = Workspace(task_id="001-alpha", variation="b", path=tmp_path / "b", src_dir="src")
+    ws_c = Workspace(task_id="001-alpha", variation="c", path=tmp_path / "c", src_dir="src")
+
+    mock_pool = MagicMock()
+    mock_pool.__enter__ = MagicMock(return_value=mock_pool)
+    mock_pool.__exit__ = MagicMock(return_value=False)
+    mock_pool.submit.side_effect = [
+        _make_future(exception=RuntimeError("crash a")),
+        _make_future(exception=RuntimeError("crash b")),
+        _make_future(exception=RuntimeError("crash c")),
+    ]
+
+    mock_write = MagicMock()
+
+    with (
+        patch("autobuild.orchestrator.ProcessPoolExecutor", return_value=mock_pool),
+        patch("autobuild.orchestrator.workspace.provision") as mock_provision,
+        patch("autobuild.orchestrator._write_results", mock_write),
+        patch("autobuild.orchestrator.create_judge_llm", return_value=MagicMock()),
+    ):
+        mock_ctx = ProvisionCtx(workspaces=[ws_a, ws_b, ws_c], keep=False)
+        mock_provision.return_value.__enter__ = MagicMock(return_value=mock_ctx)
+        mock_provision.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = orchestrator._run_task(
+            task, tmp_path, tmp_path / "results", MagicMock(), [], "src"
+        )
+
+    assert result is None
+    assert mock_ctx.keep is True, "ctx.keep must be True so the workspace is preserved"
+    final_call_kwargs = mock_write.call_args_list[-1].kwargs
+    assert final_call_kwargs.get("status") == "failed", (
+        "_write_results must be called with status='failed' on total failure"
+    )

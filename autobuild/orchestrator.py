@@ -43,7 +43,10 @@ def run(
                 print(f"\n── Task {task.id}: {task.title} [already built, skipping]")
                 continue
 
-        print(f"\n── Task {task.id}: {task.title}")
+        if partial and partial.get("status") == "failed":
+            print(f"\n── Task {task.id}: {task.title} [retrying after previous failure]")
+        else:
+            print(f"\n── Task {task.id}: {task.title}")
         winner_info = _run_task(task, repo_root, results_dir, llm, config.quality_gates, config.src_dir, keep_workspaces, config=config, partial_result=partial)
 
         if auto_commit and winner_info is not None:
@@ -91,8 +94,10 @@ def _run_task(
     partial_result: dict | None = None,
 ) -> tuple[str, VariationInstruction] | None:
     """Run a single task and return ``(winning_variation, winning_vi)`` or ``None`` on total failure."""
-    resume = partial_result is not None
-    with workspace.provision(task, repo_root, src_dir, keep=keep_workspaces, resume=resume) as workspaces:
+    # Don't resume into a dirty workspace when the prior run fully failed — start fresh.
+    resume = partial_result is not None and partial_result.get("status") != "failed"
+    with workspace.provision(task, repo_root, src_dir, keep=keep_workspaces, resume=resume) as ctx:
+        workspaces = ctx.workspaces
         for ws in workspaces:
             print(f"  [{ws.variation}] workspace: {ws.path}")
         ws_by_variation = {ws.variation: ws for ws in workspaces}
@@ -104,8 +109,9 @@ def _run_task(
             completed_results = _reconstruct_results(partial_result["agents"], ws_by_variation)
             survivors = [r.workspace for r in completed_results if r.success]
             if not survivors:
+                ctx.keep = True
                 print("  ✗ All variations failed — skipping")
-                _write_results(task, completed_results, None, results_dir)
+                _write_results(task, completed_results, None, results_dir, status="failed")
                 return None
             verdict = judge.rank(task, survivors, create_judge_llm(config, llm), repo_root=repo_root)
             _apply_winner(verdict.winner, repo_root)
@@ -160,8 +166,9 @@ def _run_task(
 
         survivors = [r.workspace for r in completed_results if r.success]
         if not survivors:
+            ctx.keep = True
             print("  ✗ All variations failed — skipping")
-            _write_results(task, completed_results, None, results_dir)
+            _write_results(task, completed_results, None, results_dir, status="failed")
             return None
 
         _write_results(task, completed_results, None, results_dir, status="judging")
@@ -233,16 +240,18 @@ def _apply_winner(winner, repo_root: Path) -> None:
 
 
 def _load_partial(task: Task, results_dir: Path) -> dict | None:
-    """Return parsed results.json if status is not 'complete', otherwise None.
+    """Return parsed results.json if the task is not yet successfully complete.
 
-    Returns None both when the file does not exist and when status == 'complete'
-    (meaning the task is fully done and should be skipped).
+    Returns data for statuses ``"in_progress"``, ``"judging"``, and ``"failed"``
+    so that interrupted and totally-failed tasks are re-run rather than silently
+    skipped.  Returns None when the file does not exist or when status is
+    ``"complete"`` (task succeeded and should be skipped).
     """
     result_file = results_dir / task.id / "results.json"
     if not result_file.exists():
         return None
     data = json.loads(result_file.read_text())
-    if data.get("status") not in ("in_progress", "judging"):
+    if data.get("status") not in ("in_progress", "judging", "failed"):
         return None
     return data
 

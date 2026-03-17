@@ -1,3 +1,4 @@
+import dataclasses
 import shutil
 import subprocess
 import sys
@@ -8,6 +9,19 @@ from typing import Iterable, List
 from .models import Task, Workspace
 
 _ALL_VARIATIONS: tuple[str, ...] = ("a", "b", "c")
+
+
+@dataclasses.dataclass
+class ProvisionCtx:
+    """Mutable context yielded by :func:`provision`.
+
+    Callers can set ``keep = True`` from inside the ``with`` block to prevent
+    workspace cleanup even when no exception is propagating — for example, when
+    all variations fail after exhausting retries.
+    """
+
+    workspaces: List[Workspace]
+    keep: bool
 
 # Minimal git identity for the throwaway initial commit.
 _GIT_ENV_ARGS = ["-c", "user.email=autobuild", "-c", "user.name=autobuild"]
@@ -27,8 +41,8 @@ def provision(
     tmp_root: Path = Path("/tmp/autobuild"),
     keep: bool = False,
     resume: bool = False,
-) -> List[Workspace]:
-    """Yield isolated workspaces (one per variation instruction) for a task and clean them up on exit.
+) -> "ProvisionCtx":
+    """Yield a :class:`ProvisionCtx` with isolated workspaces for a task and clean them up on exit.
 
     Each workspace contains only *src_dir* from *repo_root*, placed at the
     same relative path inside a fresh git repository.  The initial commit
@@ -36,7 +50,9 @@ def provision(
     exactly what the LLM changed.
 
     Pass ``keep=True`` to skip cleanup so the workspaces can be inspected
-    after the run completes.
+    after the run completes.  Callers can also set ``ctx.keep = True`` from
+    inside the ``with`` block (e.g. when all variations fail) to trigger the
+    same behaviour without an explicit flag.
 
     Pass ``resume=True`` to reuse existing variation directories instead of
     wiping and re-provisioning them.  Variation directories that already exist
@@ -47,28 +63,29 @@ def provision(
         shutil.rmtree(base, ignore_errors=True)
     base.mkdir(parents=True, exist_ok=True)
     workspaces: List[Workspace] = []
+    for v in _ALL_VARIATIONS[: len(task.variation_instructions)]:
+        dest = base / f"variation-{v}"
+        if resume and dest.exists():
+            workspaces.append(
+                Workspace(task_id=task.id, variation=v, path=dest, src_dir=src_dir),
+            )
+        else:
+            dest.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(repo_root / src_dir, dest / src_dir, dirs_exist_ok=True)
+            # Git is rooted inside src_dir so that all tracked paths are
+            # relative to src_dir. _apply_winner then copies them under
+            # repo_root/src_dir, making it structurally impossible for
+            # the winner's files to land outside src_dir in the real repo.
+            _ensure_gitignore(dest / src_dir)
+            _init_git(dest / src_dir)
+            workspaces.append(
+                Workspace(task_id=task.id, variation=v, path=dest, src_dir=src_dir),
+            )
+    ctx = ProvisionCtx(workspaces=workspaces, keep=keep)
     try:
-        for v in _ALL_VARIATIONS[: len(task.variation_instructions)]:
-            dest = base / f"variation-{v}"
-            if resume and dest.exists():
-                workspaces.append(
-                    Workspace(task_id=task.id, variation=v, path=dest, src_dir=src_dir),
-                )
-            else:
-                dest.mkdir(parents=True, exist_ok=True)
-                shutil.copytree(repo_root / src_dir, dest / src_dir, dirs_exist_ok=True)
-                # Git is rooted inside src_dir so that all tracked paths are
-                # relative to src_dir. _apply_winner then copies them under
-                # repo_root/src_dir, making it structurally impossible for
-                # the winner's files to land outside src_dir in the real repo.
-                _ensure_gitignore(dest / src_dir)
-                _init_git(dest / src_dir)
-                workspaces.append(
-                    Workspace(task_id=task.id, variation=v, path=dest, src_dir=src_dir),
-                )
-        yield workspaces
+        yield ctx
     finally:
-        if keep or sys.exc_info()[0] is not None:
+        if ctx.keep or sys.exc_info()[0] is not None:
             print(f"  Workspaces kept at: {base}")
         else:
             shutil.rmtree(base, ignore_errors=True)
