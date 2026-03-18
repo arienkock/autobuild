@@ -88,6 +88,27 @@ def test_processes_all_tasks_with_run_all(tmp_path, fake_config):
     assert built_ids == ["001-alpha", "002-beta", "003-gamma"]
 
 
+def test_run_all_stops_on_first_failure(tmp_path, fake_config):
+    """When --all is used, the loop must break on the first task that fails
+    (build step fails or no valid variations produced)."""
+    vi = VariationInstruction(prompt="b")
+    with (
+        patch("autobuild.orchestrator.load_config", return_value=fake_config),
+        patch("autobuild.orchestrator.load_backlog", return_value=TASKS),
+        patch("autobuild.orchestrator._run_task") as mock_run_task,
+    ):
+        mock_run_task.side_effect = [None, ("b", vi), ("c", vi)]
+        orchestrator.run(
+            repo_root=tmp_path,
+            backlog_dir=tmp_path / "backlog",
+            results_dir=tmp_path / "results",
+            llm=MagicMock(),
+            run_all=True,
+        )
+
+    assert mock_run_task.call_count == 1, "Must stop after first task returns None"
+
+
 # ── skip already-built tasks ──────────────────────────────────────────────────
 
 

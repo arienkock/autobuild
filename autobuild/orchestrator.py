@@ -28,6 +28,9 @@ def run(
     ``force_task_id`` to build a specific task regardless of prior results.
     Pass ``auto_commit=True`` (requires ``run_all=True``) to stage and commit
     all repo changes after each successful task.
+
+    When ``run_all=True``, the loop stops on the first task that fails (build
+    step fails or no valid variations produced), so later tasks are not run.
     """
     config = load_config(repo_root)
     matched = False
@@ -52,7 +55,7 @@ def run(
         if auto_commit and winner_info is not None:
             _git_commit(task, winner_info, repo_root)
 
-        if not run_all:
+        if not run_all or winner_info is None:
             break
 
     if force_task_id is not None and not matched:
