@@ -140,7 +140,7 @@ def _run_llm_gates(
             label = "PASS ✓" if grade == "PASS" else "FAIL ✗" if grade == "FAIL" else "ERROR ✗"
             print(f"  {tag} gate '{gate.name}': {label}", flush=True)
             if grade != "PASS" and reasoning:
-                print(f"  {tag}   → {reasoning.splitlines()[0][:120]}", flush=True)
+                print(f"  {tag}   → {reasoning}", flush=True)
             if grade != "PASS":
                 verb = "errored" if grade == "ERROR" else "FAILED"
                 failures.append(f"LLM quality gate '{gate.name}' {verb}:\n{reasoning}")
